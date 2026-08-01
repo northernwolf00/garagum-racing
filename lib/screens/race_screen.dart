@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import '../game/garagum_racing_game.dart';
 import '../game/input/pedal_button.dart';
 
-/// Phase 1 prototype screen: the physics playground itself, with a
-/// gas/brake pedal HUD. No fuel, score, menus or maps yet.
+/// The physics playground with the Phase 4 art pass: sprite car, textured
+/// dune terrain, parallax backdrop, pedal art and engine sound. Still no
+/// fuel, score or menus.
 class RaceScreen extends StatefulWidget {
   const RaceScreen({super.key});
 
@@ -23,6 +24,12 @@ class _RaceScreenState extends State<RaceScreen> {
   void initState() {
     super.initState();
     _game = GaragumRacingGame();
+  }
+
+  @override
+  void dispose() {
+    _game.audio.dispose();
+    super.dispose();
   }
 
   void _updateThrottle() {
@@ -45,11 +52,12 @@ class _RaceScreenState extends State<RaceScreen> {
             left: 24,
             bottom: 32,
             child: PedalButton(
-              icon: Icons.arrow_back,
-              color: Colors.redAccent,
+              assetPath: 'assets/images/ui/pedal_brake.png',
+              pressedAssetPath: 'assets/images/ui/pedal_brake_pressed.png',
               onPressedChanged: (pressed) {
                 _brakePressed = pressed;
                 _updateThrottle();
+                if (pressed) _game.audio.playButtonClick();
               },
             ),
           ),
@@ -57,11 +65,12 @@ class _RaceScreenState extends State<RaceScreen> {
             right: 24,
             bottom: 32,
             child: PedalButton(
-              icon: Icons.arrow_forward,
-              color: Colors.green,
+              assetPath: 'assets/images/ui/pedal_gas.png',
+              pressedAssetPath: 'assets/images/ui/pedal_gas_pressed.png',
               onPressedChanged: (pressed) {
                 _gasPressed = pressed;
                 _updateThrottle();
+                if (pressed) _game.audio.playButtonClick();
               },
             ),
           ),

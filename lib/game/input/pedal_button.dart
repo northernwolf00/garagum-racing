@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Big thumb-friendly hold-to-drive button used for gas/brake.
+/// Big thumb-friendly hold-to-drive pedal used for gas/brake, rendered with
+/// the pedal_gas/pedal_brake art (normal + pressed states) instead of a
+/// plain icon.
 ///
 /// Calls [onPressedChanged] with `true` on press and `false` on release
 /// (including when the finger slides off the button), matching how a real
@@ -8,20 +10,25 @@ import 'package:flutter/material.dart';
 class PedalButton extends StatefulWidget {
   const PedalButton({
     super.key,
-    required this.icon,
-    required this.color,
+    required this.assetPath,
+    required this.pressedAssetPath,
     required this.onPressedChanged,
+    this.width = 96,
   });
 
-  final IconData icon;
-  final Color color;
+  final String assetPath;
+  final String pressedAssetPath;
   final ValueChanged<bool> onPressedChanged;
+  final double width;
 
   @override
   State<PedalButton> createState() => _PedalButtonState();
 }
 
 class _PedalButtonState extends State<PedalButton> {
+  // pedal_gas.png / pedal_brake.png are 256x360.
+  static const double _artAspectRatio = 256 / 360;
+
   bool _pressed = false;
 
   void _setPressed(bool value) {
@@ -36,23 +43,15 @@ class _PedalButtonState extends State<PedalButton> {
       onTapDown: (_) => _setPressed(true),
       onTapUp: (_) => _setPressed(false),
       onTapCancel: () => _setPressed(false),
-      child: AnimatedContainer(
+      child: AnimatedScale(
+        scale: _pressed ? 0.94 : 1.0,
         duration: const Duration(milliseconds: 80),
-        width: 84,
-        height: 84,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: widget.color.withValues(alpha: _pressed ? 0.95 : 0.65),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: _pressed ? 4 : 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+        curve: Curves.easeOut,
+        child: Image.asset(
+          _pressed ? widget.pressedAssetPath : widget.assetPath,
+          width: widget.width,
+          height: widget.width / _artAspectRatio,
         ),
-        child: Icon(widget.icon, color: Colors.white, size: 40),
       ),
     );
   }

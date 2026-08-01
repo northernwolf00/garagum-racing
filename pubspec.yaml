@@ -23,6 +23,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flame: ^1.35.1
   flame_forge2d: ^0.19.2+4
+  flame_audio: ^2.11.5
+  vector_math: ^2.1.4
 
 dev_dependencies:
   flutter_test:
@@ -39,21 +41,20 @@ flutter:
   
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/vehicles/
+    - assets/images/parallax/
+    - assets/images/terrain/
+    - assets/images/bridge/
+    - assets/images/obstacles/
+    - assets/images/ui/
+    - assets/images/fx/
+    - assets/audio/music/
+    - assets/audio/sfx/
 
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
+ 
 
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
-
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
+ 
   # example:
   # fonts:
   #   - family: Schyler
