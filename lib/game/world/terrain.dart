@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 
 /// Procedural sand-dune ground built from a chain of static line segments.
@@ -12,12 +11,10 @@ class Terrain extends BodyComponent {
   Terrain({
     this.segmentWidth = 2.0,
     this.segmentCount = 400,
-    int? seed,
-  }) : _random = Random(seed ?? 1337);
+  });
 
   final double segmentWidth;
   final int segmentCount;
-  final Random _random;
 
   late final List<Vector2> groundPoints;
 

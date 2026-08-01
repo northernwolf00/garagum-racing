@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 
+import 'screens/race_screen.dart';
+
 void main() {
-  runApp(const MyApp());
+  runApp(const GaragumRacingApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class GaragumRacingApp extends StatelessWidget {
+  const GaragumRacingApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Garagum Racing',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-       
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE8A33D)),
+        useMaterial3: true,
       ),
-      // home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const RaceScreen(),
     );
   }
 }
-
-
