@@ -1,4 +1,4 @@
-package com.example.garagum_racing
+package com.googadev.garagum_racing
 
 import io.flutter.embedding.android.FlutterActivity
 

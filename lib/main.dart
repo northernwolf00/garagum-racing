@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import 'screens/race_screen.dart';
+import 'screens/menu/menu_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock to portrait before the first frame is shown.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Hide system UI bars for a full-screen experience.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
   runApp(const GaragumRacingApp());
 }
 
@@ -18,7 +30,7 @@ class GaragumRacingApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE8A33D)),
         useMaterial3: true,
       ),
-      home: const RaceScreen(),
+      home: const MenuScreen(),
     );
   }
 }

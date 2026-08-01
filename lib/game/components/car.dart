@@ -115,7 +115,9 @@ class Car extends Component with HasGameReference {
 
   /// -1 (full brake / reverse) .. 0 (idle) .. 1 (full gas)
   void setThrottle(double throttle) {
-    final speed = -maxMotorSpeed * throttle;
+    // Positive throttle (gas) → negative motor speed → wheels spin forward (car moves right)
+    // Negative throttle (brake) → positive motor speed → wheels spin backward (car slows/reverses)
+    final speed = maxMotorSpeed * throttle;
     frontJoint.motorSpeed = speed;
     rearJoint.motorSpeed = speed;
   }
