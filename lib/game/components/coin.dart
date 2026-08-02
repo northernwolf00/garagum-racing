@@ -4,21 +4,24 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 
+import '../garagum_racing_game.dart';
+
 /// A coin pick-up component sitting on the road surface.
 ///
-/// Forge2D sensor contact is used to detect when the car overlaps the coin.
-/// On contact:
-///  1. The coin sprite immediately becomes invisible.
-///  2. [onCollected] callback fires (plays sound + increments counter).
-///  3. The Forge2D body is destroyed and the component is removed on the
-///     next frame (we must not call world.destroyBody inside a contact callback).
+/// Uses distance checking + Forge2D sensor contact to guarantee instant
+/// collection when the car approaches or touches the coin.
+/// On collection:
+///  1. _collected = true immediately hides the coin from render().
+///  2. [onCollected] callback fires (plays sound + increments coin counter).
+///  3. Component removes itself from parent cleanly.
 class CoinComponent extends BodyComponent with ContactCallbacks {
   CoinComponent({required this.worldPosition}) : super(renderBody: false);
 
   final Vector2 worldPosition;
 
-  static const double _radius = 0.38;
+  static const double _radius = 0.45;
   static const double _spinSpeed = 2.8; // radians per second
+  static const double _pickupRadiusSq = 5.29; // 2.3 meters squared
 
   late final Sprite _sprite;
   bool _collected = false;
@@ -44,6 +47,7 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
     );
 
     final body = world.createBody(bodyDef);
+    body.userData = this;
     body.createFixture(
       FixtureDef(
         shape,
@@ -59,12 +63,13 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
+    _collect();
+  }
+
+  void _collect() {
     if (_collected) return;
     _collected = true;
-    // Fire callback immediately — sound + HUD update
     onCollected?.call();
-    // Schedule body removal for next frame (Forge2D restriction:
-    // world.destroyBody cannot be called during a step callback)
     _pendingRemoval = true;
   }
 
@@ -81,6 +86,20 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
     }
 
     if (_collected) return;
+
+    // Distance-based pickup check against car
+    final g = game;
+    if (g is GaragumRacingGame) {
+      final car = g.car;
+      if (car != null) {
+        final carPos = car.chassisBody.position;
+        if (carPos.distanceToSquared(worldPosition) < _pickupRadiusSq) {
+          _collect();
+          return;
+        }
+      }
+    }
+
     _spriteAngle += _spinSpeed * dt;
   }
 
