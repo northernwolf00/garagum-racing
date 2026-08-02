@@ -13,11 +13,7 @@ import 'world/terrain.dart';
 /// parallax dune backdrop and an engine-sound loop. Fuel, coins, run-over
 /// conditions and menus still belong to a later phase.
 class GaragumRacingGame extends Forge2DGame {
-  GaragumRacingGame()
-      : super(
-          gravity: Vector2(0, 22),
-          zoom: 28,
-        );
+  GaragumRacingGame() : super(gravity: Vector2(0, 22), zoom: 28);
 
   static const Color _skyColor = Color(0xFFFCE2A6);
 
@@ -30,12 +26,18 @@ class GaragumRacingGame extends Forge2DGame {
   static const double _spawnClearance = 3;
   static const double _spawnX = 6;
 
-  late final Terrain terrain;
-  late final Car car;
+  Terrain? terrain;
+  Car? car;
   final AudioManager audio = AudioManager();
+
+  VoidCallback? onCrash;
+  bool isCrashed = false;
 
   double _throttleInput = 0;
   final Vector2 _lastCameraPosition = Vector2.zero();
+
+  double get distance =>
+      car != null ? max(0.0, car!.position.x - _spawnX) : 0.0;
 
   @override
   Color backgroundColor() => _skyColor;
@@ -46,15 +48,17 @@ class GaragumRacingGame extends Forge2DGame {
 
     camera.backdrop = await ParallaxBackground.load(size);
 
-    terrain = Terrain();
-    await world.add(terrain);
+    final tComponent = Terrain();
+    await world.add(tComponent);
+    terrain = tComponent;
 
-    final spawnY = -terrain.heightAt(_spawnX) - _spawnClearance;
-    car = Car(startPosition: Vector2(_spawnX, spawnY));
-    await world.add(car);
+    final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
+    final cComponent = Car(startPosition: Vector2(_spawnX, spawnY));
+    await world.add(cComponent);
+    car = cComponent;
 
     camera.viewfinder.anchor = Anchor.center;
-    camera.viewfinder.position = car.position.clone();
+    camera.viewfinder.position = cComponent.position.clone();
     _lastCameraPosition.setFrom(camera.viewfinder.position);
 
     await audio.init();
@@ -63,9 +67,23 @@ class GaragumRacingGame extends Forge2DGame {
   @override
   void update(double dt) {
     super.update(dt);
+
+    final currentCar = car;
+    final currentTerrain = terrain;
+    if (currentCar == null || currentTerrain == null) return;
+
+    if (!isCrashed && currentCar.checkCrashed(currentTerrain)) {
+      isCrashed = true;
+      audio.setEngineIntensity(0);
+      audio.stopEngine();
+      audio.playCrashSound();
+      onCrash?.call();
+    }
+
     final viewfinder = camera.viewfinder;
     final t = 1 - exp(-_cameraFollowRate * dt);
-    viewfinder.position = viewfinder.position + (car.position - viewfinder.position) * t;
+    viewfinder.position =
+        viewfinder.position + (currentCar.position - viewfinder.position) * t;
 
     if (dt > 0) {
       final dx = viewfinder.position.x - _lastCameraPosition.x;
@@ -79,7 +97,11 @@ class GaragumRacingGame extends Forge2DGame {
 
   void setThrottle(double value) {
     _throttleInput = value;
-    car.setThrottle(value);
+    if (car == null || isCrashed) {
+      car?.setThrottle(0);
+      return;
+    }
+    car?.setThrottle(value);
     audio.setEngineIntensity(value);
   }
 

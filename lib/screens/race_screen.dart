@@ -26,6 +26,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   bool _gasPressed = false;
   bool _brakePressed = false;
   bool _paused = false;
+  bool _crashed = false;
 
   // HUD animation
   late final AnimationController _hudCtrl;
@@ -42,6 +43,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     ]);
 
     _game = GaragumRacingGame();
+    _game.onCrash = _onCarCrashed;
 
     _hudCtrl = AnimationController(
       vsync: this,
@@ -53,12 +55,6 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    // Switch back to portrait when exiting race
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-
     _game.audio.dispose();
     _hudCtrl.dispose();
     super.dispose();
@@ -74,6 +70,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     }
   }
 
+  void _onCarCrashed() {
+    if (!mounted) return;
+    setState(() => _crashed = true);
+  }
+
   void _togglePause() {
     setState(() => _paused = !_paused);
     if (_paused) {
@@ -85,6 +86,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
 
   void _goToMenu() {
     _game.pauseEngine();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => const MenuScreen(),
@@ -97,6 +102,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _restart() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => const RaceScreen(),
@@ -141,10 +150,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 4),
                         // Distance / Gems counter
-                        const _CounterRow(
+                        _CounterRow(
                           iconPath: 'assets/images/ui/icon_distance.png',
-                          valueText: '0 m',
-                          textColor: Color(0xFFFFFFFF),
+                          valueText: '${_game.distance.floor()} m',
+                          textColor: const Color(0xFFFFFFFF),
                         ),
                       ],
                     ),
@@ -213,6 +222,14 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
           if (_paused)
             _PauseOverlay(
               onResume: _togglePause,
+              onRestart: _restart,
+              onMenu: _goToMenu,
+            ),
+
+          // ── Crash overlay ─────────────────────────────────────────────
+          if (_crashed)
+            _CrashOverlay(
+              distanceMeters: _game.distance,
               onRestart: _restart,
               onMenu: _goToMenu,
             ),
@@ -622,6 +639,105 @@ class _PauseBtn extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Crash Overlay ────────────────────────────────────────────────────────────
+
+class _CrashOverlay extends StatelessWidget {
+  final double distanceMeters;
+  final VoidCallback onRestart;
+  final VoidCallback onMenu;
+
+  const _CrashOverlay({
+    required this.distanceMeters,
+    required this.onRestart,
+    required this.onMenu,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.82),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1F0C05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFFF5500), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF4500).withValues(alpha: 0.25),
+                  blurRadius: 50,
+                  spreadRadius: 8,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0x33FF4500),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFFF5500), width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFFF5500),
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFFFF4500), Color(0xFFFF8C1A)],
+                  ).createShader(bounds),
+                  child: const Text(
+                    'AGDARYLDYŇYZ!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Aralygyňyz: ${distanceMeters.floor()} m',
+                  style: const TextStyle(
+                    color: Color(0xFFFFD98C),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _PauseBtn(
+                  label: 'TÄZEDEN BAŞLA',
+                  icon: Icons.replay_rounded,
+                  primary: true,
+                  onTap: onRestart,
+                ),
+                const SizedBox(height: 10),
+                _PauseBtn(
+                  label: 'BAŞ MENÝU',
+                  icon: Icons.home_rounded,
+                  primary: false,
+                  onTap: onMenu,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

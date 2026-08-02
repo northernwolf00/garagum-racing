@@ -31,6 +31,14 @@ class AudioManager {
     return FlameAudio.play('sfx/click-button.mp3', volume: 0.6);
   }
 
+  Future<void> playCrashSound() {
+    return FlameAudio.play('sfx/car-crash-sound.mp3', volume: 0.9);
+  }
+
+  Future<void> stopEngine() async {
+    await _enginePlayer?.stop();
+  }
+
   Future<void> dispose() async {
     await _enginePlayer?.stop();
     await _enginePlayer?.dispose();

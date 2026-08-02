@@ -1,7 +1,10 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+
+import '../world/terrain.dart';
 
 /// A physics-driven vehicle: a boxy chassis riding on two circular wheels,
 /// connected with motorised revolute joints. Rendered with the Phase 4 art
@@ -127,6 +130,30 @@ class Car extends Component with HasGameReference {
   void release() => setThrottle(0);
 
   Vector2 get position => chassisBody.position;
+
+  /// Checks if the driver's head hit the ground or chassis flipped upside down near ground.
+  bool checkCrashed(Terrain terrain) {
+    final angle = chassisBody.angle;
+    // Driver head offset in local chassis coordinates (-Y is UP in local space)
+    final headOffset = Vector2(0, -0.65)..rotate(angle);
+    final headPos = chassisBody.position + headOffset;
+
+    final headGroundY = -terrain.heightAt(headPos.x);
+
+    // Head touching or below ground level (Y increases downwards in Flame Forge2D)
+    if (headPos.y >= headGroundY - 0.15) {
+      return true;
+    }
+
+    // Chassis inverted (angle > ~110 degrees) and close to ground level
+    final chassisGroundY = -terrain.heightAt(chassisBody.position.x);
+    final isUpsideDown = math.cos(angle) < -0.3;
+    if (isUpsideDown && chassisBody.position.y >= chassisGroundY - 0.6) {
+      return true;
+    }
+
+    return false;
+  }
 
   @override
   void render(Canvas canvas) {
