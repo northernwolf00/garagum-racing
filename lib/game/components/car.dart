@@ -86,10 +86,19 @@ class Car extends Component with HasGameReference {
     rearJoint = _attachWheel(chassisBody, rearWheelBody);
   }
 
+  double _upsideDownTimer = 0.0;
+
   @override
   void update(double dt) {
     super.update(dt);
     _updateHeadPhysics(dt);
+
+    final isUpsideDown = math.cos(chassisBody.angle) < -0.3;
+    if (isUpsideDown) {
+      _upsideDownTimer += dt;
+    } else {
+      _upsideDownTimer = 0.0;
+    }
   }
 
   void _updateHeadPhysics(double dt) {
@@ -195,7 +204,7 @@ class Car extends Component with HasGameReference {
 
   Vector2 get position => chassisBody.position;
 
-  /// Checks if the driver's head hit the ground or chassis flipped upside down near ground.
+  /// Checks if the driver's head hit the ground/bridge or chassis flipped upside down.
   bool checkCrashed(Terrain terrain) {
     final angle = chassisBody.angle;
     final restingHeadY = _driverBodyOffsetYM - _driverBodySizeM * 0.26;
@@ -205,17 +214,42 @@ class Car extends Component with HasGameReference {
     )..rotate(angle);
     final headPos = chassisBody.position + localHead;
 
-    final headGroundY = -terrain.heightAt(headPos.x);
+    // Calculate effective surface Y level at head position (accounting for bridge decks)
+    double effectiveHeadGroundY = -terrain.heightAt(headPos.x);
+    for (final span in terrain.bridgeSpans) {
+      if (headPos.x >= span.startX - 2.5 && headPos.x <= span.endX + 2.5) {
+        final bridgeDeckY = -terrain.baseHeightAt(span.startX);
+        effectiveHeadGroundY = math.min(effectiveHeadGroundY, bridgeDeckY);
+      }
+    }
 
-    // Head touching or below ground level
-    if (headPos.y >= headGroundY - 0.15) {
+    // Driver's head touching or below ground/bridge surface
+    if (headPos.y >= effectiveHeadGroundY - 0.2) {
       return true;
     }
 
-    // Chassis inverted (angle > ~110 degrees) and close to ground level
-    final chassisGroundY = -terrain.heightAt(chassisBody.position.x);
+    // Calculate effective surface Y level at chassis position
+    final chassisX = chassisBody.position.x;
+    double effectiveChassisGroundY = -terrain.heightAt(chassisX);
+    for (final span in terrain.bridgeSpans) {
+      if (chassisX >= span.startX - 2.5 && chassisX <= span.endX + 2.5) {
+        final bridgeDeckY = -terrain.baseHeightAt(span.startX);
+        effectiveChassisGroundY = math.min(
+          effectiveChassisGroundY,
+          bridgeDeckY,
+        );
+      }
+    }
+
+    // Chassis inverted (angle > ~110 degrees) near ground or bridge deck
     final isUpsideDown = math.cos(angle) < -0.3;
-    if (isUpsideDown && chassisBody.position.y >= chassisGroundY - 0.5) {
+    if (isUpsideDown &&
+        chassisBody.position.y >= effectiveChassisGroundY - 0.75) {
+      return true;
+    }
+
+    // Continuous upside-down for over 0.5 seconds anywhere
+    if (_upsideDownTimer > 0.5) {
       return true;
     }
 

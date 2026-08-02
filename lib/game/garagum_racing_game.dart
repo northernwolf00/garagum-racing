@@ -12,6 +12,7 @@ import 'components/coin.dart';
 import 'components/fuel_canister.dart';
 import 'components/obstacle.dart';
 import 'world/bridge.dart';
+import 'world/desert_decor.dart';
 import 'world/parallax_background.dart';
 import 'world/terrain.dart';
 
@@ -100,6 +101,14 @@ class GaragumRacingGame extends Forge2DGame {
         canalBottomY: canalBottomY,
       ));
     }
+
+    // Add sparse desert scenery (camels, yurts) along the dunes
+    await world.add(
+      DesertDecorComponent(
+        terrain: tComponent,
+        seed: roundConfig.roundIndex * 71 + 11,
+      ),
+    );
 
     // Add road obstacles
     await _spawnRoadObstacles(tComponent);
@@ -201,34 +210,47 @@ class GaragumRacingGame extends Forge2DGame {
 
   // ── Fuel canister spawning ────────────────────────────────────────────────
 
+  /// Target spacing between canisters, in meters. Deliberately tighter than
+  /// a full tank's nominal range (~40s * 12 m/s ≈ 480 m) so canisters read
+  /// as genuinely placed along the road on every round — including short
+  /// ones — rather than only appearing once rounds get long enough to need
+  /// them. It also leaves a comfortable buffer for hills and obstacle
+  /// slowdowns, which burn more fuel per meter than the flat-road estimate.
+  static const double _fuelCanisterSpacing = 220.0;
+
   Future<void> _spawnFuelCanisters(Terrain tComponent) async {
-    // Place a canister every ~_fullFuelSeconds * speed meters.
-    // Car speed ≈ 12 m/s at full throttle, so place every ~35-45 m.
-    // We put the first one at 80% of a tank's range so the player
-    // gets one warning before running dry.
-    final double carApproxSpeed = 12.0; // m/s approx
-    final double fuelRange = _fullFuelSeconds * carApproxSpeed * 0.85;
-
-    double curX = _spawnX + fuelRange;
+    final usableStart = _spawnX + 60.0;
     final maxX = _spawnX + roundConfig.distanceMeters - 10.0;
+    if (maxX <= usableStart) return;
 
-    while (curX < maxX) {
-      if (!tComponent.isInsideBridgeSpan(curX, extraMargin: 4.0)) {
-        final groundH = tComponent.heightAt(curX);
-        final groundY = -groundH;
-        // Float canister 0.8m above terrain — slightly lower than coins
-        final canisterPos = Vector2(curX, groundY - 0.9);
+    final span = maxX - usableStart;
+    final count = (span / _fuelCanisterSpacing).ceil().clamp(1, 20);
+    final step = span / count;
+    final rand = Random(roundConfig.roundIndex * 53 + 7);
 
-        final canister = FuelCanisterComponent(worldPosition: canisterPos);
-        canister.onCollected = () {
-          fuelNotifier.value =
-              (fuelNotifier.value + 0.55).clamp(0.0, 1.0); // refill ~55%
-          audio.playFuelSound();
-        };
-        await world.add(canister);
+    for (int i = 0; i < count; i++) {
+      final baseX = usableStart + step * (i + 0.5);
+      final jitter = (rand.nextDouble() - 0.5) * step * 0.4;
+      var curX = (baseX + jitter).clamp(usableStart, maxX);
+
+      if (tComponent.isInsideBridgeSpan(curX, extraMargin: 4.0)) {
+        final shifted = (curX + step * 0.3).clamp(usableStart, maxX);
+        if (tComponent.isInsideBridgeSpan(shifted, extraMargin: 4.0)) continue;
+        curX = shifted;
       }
 
-      curX += fuelRange;
+      final groundH = tComponent.heightAt(curX);
+      final groundY = -groundH;
+      // Float canister 0.8m above terrain — slightly lower than coins
+      final canisterPos = Vector2(curX, groundY - 0.9);
+
+      final canister = FuelCanisterComponent(worldPosition: canisterPos);
+      canister.onCollected = () {
+        fuelNotifier.value =
+            (fuelNotifier.value + 0.55).clamp(0.0, 1.0); // refill ~55%
+        audio.playFuelSound();
+      };
+      await world.add(canister);
     }
   }
 

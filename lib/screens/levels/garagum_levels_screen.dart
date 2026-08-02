@@ -57,6 +57,9 @@ class _GaragumLevelsScreenState extends State<GaragumLevelsScreen>
   @override
   Widget build(BuildContext context) {
     final totalCoins = _progress.getTotalCoins();
+    final completedCount = RoundConfig.all
+        .where((r) => _progress.isRoundCompleted(r.roundIndex))
+        .length;
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A0E06),
@@ -104,6 +107,17 @@ class _GaragumLevelsScreenState extends State<GaragumLevelsScreen>
               ],
             ),
 
+            // Progress summary
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: _ProgressSummary(
+                  completed: completedCount,
+                  total: RoundConfig.all.length,
+                ),
+              ),
+            ),
+
             // Round grid
             SliverPadding(
               padding:
@@ -116,11 +130,14 @@ class _GaragumLevelsScreenState extends State<GaragumLevelsScreen>
                         _progress.isRoundUnlocked(round.roundIndex);
                     final completed =
                         _progress.isRoundCompleted(round.roundIndex);
-                    return _RoundCard(
-                      round: round,
-                      isUnlocked: unlocked,
-                      isCompleted: completed,
-                      onTap: () => _onRoundTap(round),
+                    return _StaggerIn(
+                      index: index,
+                      child: _RoundCard(
+                        round: round,
+                        isUnlocked: unlocked,
+                        isCompleted: completed,
+                        onTap: () => _onRoundTap(round),
+                      ),
                     );
                   },
                   childCount: RoundConfig.all.length,
@@ -182,6 +199,169 @@ class _CoinBadge extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Progress Summary ───────────────────────────────────────────────────────
+
+class _ProgressSummary extends StatelessWidget {
+  const _ProgressSummary({required this.completed, required this.total});
+
+  final int completed;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = total == 0 ? 0.0 : completed / total;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: const Color(0x1AFFFFFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x33E8A33D), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'ÖŇEGIDIŞLIK',
+                style: TextStyle(
+                  color: Color(0xFFFFD98C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2,
+                ),
+              ),
+              Text(
+                '$completed / $total tur',
+                style: const TextStyle(
+                  color: Color(0xFFE8A33D),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Stack(
+              children: [
+                Container(height: 8, color: const Color(0x33FFFFFF)),
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: fraction.clamp(0.0, 1.0)),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) => FractionallySizedBox(
+                    widthFactor: value,
+                    child: Container(
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFF8C1A), Color(0xFFFFD700)],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Staggered entrance wrapper ────────────────────────────────────────────
+
+class _StaggerIn extends StatefulWidget {
+  const _StaggerIn({required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  State<_StaggerIn> createState() => _StaggerInState();
+}
+
+class _StaggerInState extends State<_StaggerIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    Future.delayed(Duration(milliseconds: 40 * widget.index), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(position: _slide, child: widget.child),
+    );
+  }
+}
+
+// ─── Difficulty Dots ────────────────────────────────────────────────────────
+
+/// Small 1-5 dot indicator translating [RoundConfig.obstacleFrequency]
+/// (0.5 .. 2.5 across the ten rounds) into an at-a-glance difficulty rating.
+class _DifficultyDots extends StatelessWidget {
+  const _DifficultyDots({required this.frequency, required this.unlocked});
+
+  final double frequency;
+  final bool unlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    const minFreq = 0.5;
+    const maxFreq = 2.5;
+    final filled = (((frequency - minFreq) / (maxFreq - minFreq)) * 5)
+        .round()
+        .clamp(1, 5);
+
+    return Row(
+      children: List.generate(5, (i) {
+        final isFilled = i < filled;
+        return Padding(
+          padding: const EdgeInsets.only(right: 3),
+          child: Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: !unlocked
+                  ? const Color(0xFF3A2515)
+                  : isFilled
+                      ? const Color(0xFFFFD98C)
+                      : Colors.white.withValues(alpha: 0.25),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
@@ -311,9 +491,6 @@ class _RoundCardState extends State<_RoundCard>
                           ),
                         ),
                         const Spacer(),
-                        if (!unlocked)
-                          const Icon(Icons.lock_rounded,
-                              color: Color(0xFF4A3320), size: 20),
                         if (completed)
                           const Icon(Icons.check_circle_rounded,
                               color: Color(0xFF76FF03), size: 22),
@@ -380,11 +557,36 @@ class _RoundCardState extends State<_RoundCard>
                             ),
                           ],
                         ),
+                        const SizedBox(height: 6),
+                        _DifficultyDots(
+                          frequency: round.obstacleFrequency,
+                          unlocked: unlocked,
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
+
+              // Play affordance for unlocked-but-not-yet-completed rounds
+              if (unlocked && !completed)
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.28),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
 
               // Locked overlay
               if (!unlocked)
@@ -392,7 +594,27 @@ class _RoundCardState extends State<_RoundCard>
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: Colors.black.withValues(alpha: 0.35),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lock_rounded,
+                              color: Color(0xFF8A6A3F), size: 26),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${round.roundIndex - 1}-nji turu geç',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF8A6A3F),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
