@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,8 +7,12 @@ import '../game/garagum_racing_game.dart';
 import '../game/input/pedal_button.dart';
 import 'menu/menu_screen.dart';
 
-/// Race screen: full physics game + HUD overlay (pedals, pause, fuel gauge,
-/// distance counter). Landscape mode.
+/// Race screen with authentic Hill Climb style HUD layout:
+/// - Top Left: Fuel Bar, Coins, Gems/Distance
+/// - Top Right: Pause button
+/// - Bottom Left: BRAKE pedal
+/// - Bottom Right: GAS pedal
+/// - Bottom Center: RPM & Boost Dashboard Gauges with animated needles
 class RaceScreen extends StatefulWidget {
   const RaceScreen({super.key});
 
@@ -104,6 +109,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final double currentThrottle = _game.throttleInput;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -115,62 +122,84 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
             opacity: _hudFade,
             child: Stack(
               children: [
-                // Top bar: pause button + distance
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    child: Row(
+                // ── Top Left Stack (Fuel, Coins, Distance) ─────────────
+                Positioned(
+                  top: 12,
+                  left: 16,
+                  child: SafeArea(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Pause button
-                        _HudButton(
-                          assetPath: 'assets/images/ui/btn_pause.png',
-                          fallbackIcon: Icons.pause_rounded,
-                          onTap: _togglePause,
-                        ),
-                        const SizedBox(width: 10),
-                        // Distance badge
-                        _DistanceBadge(game: _game),
-                        const Spacer(),
+                        // Fuel bar
+                        const _FuelBar(level: 1.0),
+                        const SizedBox(height: 6),
                         // Coin counter
-                        _HudCoinBadge(coins: 0),
+                        const _CounterRow(
+                          iconPath: 'assets/images/ui/coin.png',
+                          valueText: '0',
+                          textColor: Color(0xFFFFD700),
+                        ),
+                        const SizedBox(height: 4),
+                        // Distance / Gems counter
+                        const _CounterRow(
+                          iconPath: 'assets/images/ui/icon_distance.png',
+                          valueText: '0 m',
+                          textColor: Color(0xFFFFFFFF),
+                        ),
                       ],
                     ),
                   ),
                 ),
 
-                // Fuel gauge — bottom center
+                // ── Top Right (Pause Button) ───────────────────────────
                 Positioned(
-                  bottom: 48,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _FuelGauge(level: 1.0)),
+                  top: 12,
+                  right: 16,
+                  child: SafeArea(
+                    child: _PauseButton(onTap: _togglePause),
+                  ),
                 ),
 
-                // ── Brake pedal (LEFT) ──────────────────────────────────
+                // ── Bottom Center (RPM & Boost Gauges) ─────────────────
                 Positioned(
-                  left: 16,
-                  bottom: 28,
+                  bottom: 12,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _DashboardGauges(
+                      throttle: currentThrottle,
+                      brakePressed: _brakePressed,
+                      gasPressed: _gasPressed,
+                    ),
+                  ),
+                ),
+
+                // ── Bottom Left (Brake Pedal) ──────────────────────────
+                Positioned(
+                  left: 20,
+                  bottom: 12,
                   child: PedalButton(
+                    width: 90,
                     assetPath: 'assets/images/ui/pedal_brake.png',
                     pressedAssetPath: 'assets/images/ui/pedal_brake_pressed.png',
                     onPressedChanged: (pressed) {
-                      _brakePressed = pressed;
+                      setState(() => _brakePressed = pressed);
                       _updateThrottle();
                       if (pressed) _game.audio.playButtonClick();
                     },
                   ),
                 ),
 
-                // ── Gas pedal (RIGHT) ───────────────────────────────────
+                // ── Bottom Right (Gas Pedal) ───────────────────────────
                 Positioned(
-                  right: 16,
-                  bottom: 28,
+                  right: 20,
+                  bottom: 12,
                   child: PedalButton(
+                    width: 90,
                     assetPath: 'assets/images/ui/pedal_gas.png',
                     pressedAssetPath: 'assets/images/ui/pedal_gas_pressed.png',
                     onPressedChanged: (pressed) {
-                      _gasPressed = pressed;
+                      setState(() => _gasPressed = pressed);
                       _updateThrottle();
                       if (pressed) _game.audio.playButtonClick();
                     },
@@ -193,24 +222,108 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 }
 
-// ─── HUD Button ───────────────────────────────────────────────────────────────
+// ─── Fuel Bar ─────────────────────────────────────────────────────────────────
 
-class _HudButton extends StatefulWidget {
-  final String assetPath;
-  final IconData fallbackIcon;
-  final VoidCallback onTap;
+class _FuelBar extends StatelessWidget {
+  final double level; // 0.0 - 1.0
 
-  const _HudButton({
-    required this.assetPath,
-    required this.fallbackIcon,
-    required this.onTap,
+  const _FuelBar({required this.level});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Image.asset(
+          'assets/images/ui/icon_fuel.png',
+          width: 22,
+          height: 22,
+          errorBuilder: (_, __, ___) => const Icon(
+            Icons.local_gas_station,
+            color: Color(0xFFFF3333),
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          width: 110,
+          height: 16,
+          decoration: BoxDecoration(
+            color: Colors.black45,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.white70, width: 1.5),
+          ),
+          padding: const EdgeInsets.all(2),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: level.clamp(0.0, 1.0),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(2),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF76FF03), Color(0xFFC6FF00)],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Counter Row ──────────────────────────────────────────────────────────────
+
+class _CounterRow extends StatelessWidget {
+  final String iconPath;
+  final String valueText;
+  final Color textColor;
+
+  const _CounterRow({
+    required this.iconPath,
+    required this.valueText,
+    required this.textColor,
   });
 
   @override
-  State<_HudButton> createState() => _HudButtonState();
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Image.asset(
+          iconPath,
+          width: 20,
+          height: 20,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.circle, color: Colors.amber, size: 20),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          valueText,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+            shadows: const [
+              Shadow(color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-class _HudButtonState extends State<_HudButton>
+// ─── Pause Button ─────────────────────────────────────────────────────────────
+
+class _PauseButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _PauseButton({required this.onTap});
+
+  @override
+  State<_PauseButton> createState() => _PauseButtonState();
+}
+
+class _PauseButtonState extends State<_PauseButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _scale;
@@ -248,19 +361,19 @@ class _HudButtonState extends State<_HudButton>
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: const Color(0x88000000),
+            color: Colors.black45,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0x55E8A33D), width: 1.5),
+            border: Border.all(color: Colors.white60, width: 1.5),
           ),
           child: Center(
             child: Image.asset(
-              widget.assetPath,
-              width: 24,
-              height: 24,
-              errorBuilder: (_, __, ___) => Icon(
-                widget.fallbackIcon,
-                color: const Color(0xFFE8A33D),
-                size: 24,
+              'assets/images/ui/btn_pause.png',
+              width: 26,
+              height: 26,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.pause_rounded,
+                color: Colors.white,
+                size: 26,
               ),
             ),
           ),
@@ -270,164 +383,102 @@ class _HudButtonState extends State<_HudButton>
   }
 }
 
-// ─── Distance Badge ───────────────────────────────────────────────────────────
+// ─── Dashboard Gauges ─────────────────────────────────────────────────────────
 
-class _DistanceBadge extends StatefulWidget {
-  final GaragumRacingGame game;
-  const _DistanceBadge({required this.game});
+class _DashboardGauges extends StatelessWidget {
+  final double throttle;
+  final bool brakePressed;
+  final bool gasPressed;
 
-  @override
-  State<_DistanceBadge> createState() => _DistanceBadgeState();
-}
+  const _DashboardGauges({
+    required this.throttle,
+    required this.brakePressed,
+    required this.gasPressed,
+  });
 
-class _DistanceBadgeState extends State<_DistanceBadge> {
-  // Distance tracking will be wired up when the game exposes it.
-  // For now shows 0 m.
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0x88000000),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x44E8A33D), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset(
-            'assets/images/ui/icon_distance.png',
-            width: 16,
-            height: 16,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.straighten,
-              color: Color(0xFFE8A33D),
-              size: 16,
-            ),
-          ),
-          const SizedBox(width: 6),
-          const Text(
-            '0 m',
-            style: TextStyle(
-              color: Color(0xFFFFD98C),
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      ),
+    // RPM needle angle calculation (-120 to +120 degrees)
+    final rpmFactor = (throttle.abs() * 0.85 + (gasPressed || brakePressed ? 0.15 : 0.0)).clamp(0.0, 1.0);
+    final rpmAngle = (-120 + rpmFactor * 240) * (math.pi / 180);
+
+    // Boost needle angle
+    final boostFactor = (gasPressed ? 0.9 : (brakePressed ? 0.4 : 0.0)).clamp(0.0, 1.0);
+    final boostAngle = (-120 + boostFactor * 240) * (math.pi / 180);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // RPM Gauge
+        _GaugeWidget(
+          gaugeAsset: 'assets/images/ui/gauge_rpm.png',
+          needleAsset: 'assets/images/ui/gauge_needle.png',
+          needleAngle: rpmAngle,
+          size: 72,
+        ),
+        const SizedBox(width: 12),
+        // Boost Gauge
+        _GaugeWidget(
+          gaugeAsset: 'assets/images/ui/gauge_boost.png',
+          needleAsset: 'assets/images/ui/gauge_needle.png',
+          needleAngle: boostAngle,
+          size: 72,
+        ),
+      ],
     );
   }
 }
 
-// ─── HUD Coin Badge ───────────────────────────────────────────────────────────
+class _GaugeWidget extends StatelessWidget {
+  final String gaugeAsset;
+  final String needleAsset;
+  final double needleAngle;
+  final double size;
 
-class _HudCoinBadge extends StatelessWidget {
-  final int coins;
-  const _HudCoinBadge({required this.coins});
+  const _GaugeWidget({
+    required this.gaugeAsset,
+    required this.needleAsset,
+    required this.needleAngle,
+    required this.size,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0x88000000),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x44E8A33D), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
           Image.asset(
-            'assets/images/ui/coin.png',
-            width: 16,
-            height: 16,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.monetization_on,
-              color: Color(0xFFFFD98C),
-              size: 16,
+            gaugeAsset,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black54,
+                border: Border.all(color: Colors.white30, width: 2),
+              ),
             ),
           ),
-          const SizedBox(width: 6),
-          Text(
-            '$coins',
-            style: const TextStyle(
-              color: Color(0xFFFFD98C),
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Fuel Gauge ───────────────────────────────────────────────────────────────
-
-class _FuelGauge extends StatelessWidget {
-  final double level; // 0.0 – 1.0
-  const _FuelGauge({required this.level});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = level > 0.3
-        ? Color.lerp(const Color(0xFFFFD700), const Color(0xFF44FF88), level)!
-        : const Color(0xFFFF3300);
-
-    return Container(
-      width: 140,
-      height: 28,
-      decoration: BoxDecoration(
-        color: const Color(0x88000000),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x55E8A33D), width: 1),
-      ),
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(5),
+          Transform.rotate(
+            angle: needleAngle,
             child: Image.asset(
-              'assets/images/ui/icon_fuel.png',
-              width: 18,
-              height: 18,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.local_gas_station,
-                color: Color(0xFFE8A33D),
-                size: 16,
+              needleAsset,
+              width: size * 0.75,
+              height: size * 0.75,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Container(
+                width: 2,
+                height: size * 0.35,
+                color: Colors.red,
               ),
             ),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0x33FFFFFF),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  FractionallySizedBox(
-                    widthFactor: level.clamp(0.0, 1.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(color: color.withOpacity(0.5), blurRadius: 6),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
         ],
       ),
     );
@@ -450,18 +501,18 @@ class _PauseOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black.withOpacity(0.75),
+      color: Colors.black.withValues(alpha: 0.75),
       child: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 40),
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: const Color(0xFF1C0E06),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: const Color(0x55E8A33D), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFE8601A).withOpacity(0.15),
+                color: const Color(0xFFE8601A).withValues(alpha: 0.15),
                 blurRadius: 40,
                 spreadRadius: 5,
               ),
@@ -470,7 +521,6 @@ class _PauseOverlay extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle
               Container(
                 width: 40,
                 height: 4,
@@ -479,31 +529,31 @@ class _PauseOverlay extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               const Text(
                 'DURALDY',
                 style: TextStyle(
                   color: Color(0xFFFFD98C),
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 6,
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               _PauseBtn(
                 label: 'DOWAM ET',
                 icon: Icons.play_arrow_rounded,
                 primary: true,
                 onTap: onResume,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _PauseBtn(
                 label: 'TÄZEDEN',
                 icon: Icons.replay_rounded,
                 primary: false,
                 onTap: onRestart,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _PauseBtn(
                 label: 'BAŞ MENÝU',
                 icon: Icons.home_rounded,
@@ -537,7 +587,7 @@ class _PauseBtn extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        height: 52,
+        height: 48,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           gradient: primary
@@ -549,20 +599,9 @@ class _PauseBtn extends StatelessWidget {
               : null,
           color: primary ? null : const Color(0x22E8A33D),
           border: Border.all(
-            color: primary
-                ? const Color(0xFFFFAA44)
-                : const Color(0x44E8A33D),
+            color: primary ? const Color(0xFFFFAA44) : const Color(0x44E8A33D),
             width: 1.5,
           ),
-          boxShadow: primary
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFE85A00).withOpacity(0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -576,7 +615,7 @@ class _PauseBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: primary ? Colors.white : const Color(0xFFE8A33D),
                 letterSpacing: 2,
