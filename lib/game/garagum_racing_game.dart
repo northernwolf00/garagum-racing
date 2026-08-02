@@ -29,6 +29,17 @@ class GaragumRacingGame extends Forge2DGame {
   static const double _spawnClearance = 3;
   static const double _spawnX = 6;
 
+  /// Upper bound on the per-frame timestep fed to the Forge2D solver.
+  /// Flutter's frame ticker keeps running real wall-clock time while the
+  /// app is backgrounded, so resuming (or a long stutter/hitch) can deliver
+  /// one huge [dt]. Forge2D steps that in a single shot with no
+  /// sub-stepping, which can tunnel the fast-spinning wheels through the
+  /// thin terrain chain shape and destabilise the head-bob spring
+  /// integrator in [Car]. Clamping keeps every physics step small and
+  /// stable; the sim just runs a bit "slow" for one frame after a hitch
+  /// instead of jumping or exploding.
+  static const double _maxPhysicsDt = 1 / 30;
+
   /// Full tank in seconds of driving. Each round gives this much fuel.
   /// Fuel canisters are placed so you can always theoretically finish
   /// if you pick them up.

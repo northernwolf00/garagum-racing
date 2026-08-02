@@ -73,12 +73,18 @@ class BridgeComponent extends BodyComponent {
 
   @override
   Body createBody() {
-    final halfW = width / 2;
+    // Extend collision deck 2.5 meters onto land banks on left and right
+    final extendedStartX = startX - 2.5;
+    final extendedEndX = endX + 2.5;
+    final extendedWidth = extendedEndX - extendedStartX;
+    final extendedMidX = (extendedStartX + extendedEndX) / 2;
+
+    final halfW = extendedWidth / 2;
     final halfH = deckThickness / 2;
     final centerY = deckY + halfH;
 
     final shape = PolygonShape()
-      ..setAsBox(halfW, halfH, Vector2(midX, centerY), 0);
+      ..setAsBox(halfW, halfH, Vector2(extendedMidX, centerY), 0);
 
     final bodyDef = BodyDef(
       type: BodyType.static,

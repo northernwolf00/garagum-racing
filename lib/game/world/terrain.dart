@@ -37,7 +37,6 @@ class Terrain extends BodyComponent {
   final int segmentCount;
 
   static const double canalDepth = 6.5;
-  static const double canalBankMargin = 3.5;
 
   /// List of procedurally generated bridge spans.
   final List<BridgeSpan> bridgeSpans = [];
@@ -56,7 +55,7 @@ class Terrain extends BodyComponent {
   late final ui.Paint _topPaint;
 
   void _generateBridgeSpans() {
-    // Generate bridges every ~180-220 meters starting after x = 120m
+    // Generate bridges every ~180-220 meters starting after x = 130m
     double curX = 130.0;
     final maxWorldX = segmentCount * segmentWidth;
 
@@ -83,23 +82,27 @@ class Terrain extends BodyComponent {
       final bStart = span.startX;
       final bEnd = span.endX;
 
-      if (x >= bStart - canalBankMargin && x <= bEnd + canalBankMargin) {
-        // Target canal bottom height
+      if (x >= bStart - 4.0 && x <= bEnd + 4.0) {
         final bridgeDeckH = baseHeightAt(bStart);
         final canalBedH = bridgeDeckH - canalDepth;
 
-        if (x >= bStart && x <= bEnd) {
+        if (x >= bStart + 2.5 && x <= bEnd - 2.5) {
+          // Canal water bed directly underneath bridge center
           return canalBedH;
-        } else if (x < bStart) {
-          // Left bank slope down
-          final t = (x - (bStart - canalBankMargin)) / canalBankMargin;
+        } else if (x > bStart && x < bStart + 2.5) {
+          // Slope down into canal under left side of bridge
+          final t = (x - bStart) / 2.5;
           final smoothT = (1 - cos(t * pi)) / 2;
-          return baseH + (canalBedH - baseH) * smoothT;
+          return bridgeDeckH + (canalBedH - bridgeDeckH) * smoothT;
+        } else if (x > bEnd - 2.5 && x < bEnd) {
+          // Slope up out of canal under right side of bridge
+          final t = (x - (bEnd - 2.5)) / 2.5;
+          final smoothT = (1 - cos(t * pi)) / 2;
+          return canalBedH + (bridgeDeckH - canalBedH) * smoothT;
         } else {
-          // Right bank slope up
-          final t = (x - bEnd) / canalBankMargin;
-          final smoothT = (1 - cos(t * pi)) / 2;
-          return canalBedH + (baseH - canalBedH) * smoothT;
+          // Land bank approach (bStart - 4.0 to bStart, and bEnd to bEnd + 4.0)
+          // Keep flat at bridgeDeckH so car transitions seamlessly onto bridge deck
+          return bridgeDeckH;
         }
       }
     }
@@ -122,7 +125,6 @@ class Terrain extends BodyComponent {
     final dx = 0.4;
     final h1 = heightAt(x - dx);
     final h2 = heightAt(x + dx);
-    // Note: Y in world space is -height, so dy = -(h2 - h1)
     return atan2(-(h2 - h1), dx * 2);
   }
 
@@ -144,8 +146,9 @@ class Terrain extends BodyComponent {
     final fixtureDef = FixtureDef(
       shape,
       friction: 0.9,
-      restitution: 0.05,
+      restitution: 0.0,
     );
+
     body.createFixture(fixtureDef);
     return body;
   }
@@ -154,48 +157,62 @@ class Terrain extends BodyComponent {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    final fillImage = await Flame.images.load('terrain/terrain_fill.png');
-    final topImage = await Flame.images.load('terrain/terrain_top.png');
+    final fillImg = await Flame.images.load('terrain/terrain_fill.png');
+    final topImg = await Flame.images.load('terrain/terrain_top.png');
 
-    final fillScale = _fillTileMeters / fillImage.width;
+    final fillScale = _fillTileMeters / fillImg.width;
     _fillPaint = ui.Paint()
       ..shader = ui.ImageShader(
-        fillImage,
+        fillImg,
         ui.TileMode.repeated,
         ui.TileMode.repeated,
         (Matrix4.identity()..scaleByDouble(fillScale, fillScale, 1, 1)).storage,
       );
 
-    final topScaleX = _fillTileMeters / topImage.width;
-    final topScaleY = _topStripHeightMeters / topImage.height;
     _topPaint = ui.Paint()
       ..shader = ui.ImageShader(
-        topImage,
+        topImg,
         ui.TileMode.repeated,
-        ui.TileMode.repeated,
-        (Matrix4.identity()..scaleByDouble(topScaleX, topScaleY, 1, 1)).storage,
-      )
-      ..style = ui.PaintingStyle.stroke
-      ..strokeWidth = _topStripHeightMeters
-      ..strokeJoin = ui.StrokeJoin.round
-      ..strokeCap = ui.StrokeCap.round;
+        ui.TileMode.clamp,
+        (Matrix4.identity()..scaleByDouble(fillScale, fillScale, 1, 1)).storage,
+      );
 
-    final lowestY = groundPoints.map((p) => p.y).reduce(max);
-    final deepY = lowestY + _fillDepthMeters;
+    _buildPaths();
+  }
 
-    _fillPath = ui.Path()..moveTo(groundPoints.first.x, groundPoints.first.y);
-    for (final point in groundPoints.skip(1)) {
-      _fillPath.lineTo(point.x, point.y);
+  void _buildPaths() {
+    _fillPath = ui.Path();
+    _topPath = ui.Path();
+
+    if (groundPoints.isEmpty) return;
+
+    final first = groundPoints.first;
+    _fillPath.moveTo(first.x, first.y);
+
+    for (int i = 1; i < groundPoints.length; i++) {
+      _fillPath.lineTo(groundPoints[i].x, groundPoints[i].y);
     }
-    _fillPath
-      ..lineTo(groundPoints.last.x, deepY)
-      ..lineTo(groundPoints.first.x, deepY)
-      ..close();
 
-    _topPath = ui.Path()..moveTo(groundPoints.first.x, groundPoints.first.y);
-    for (final point in groundPoints.skip(1)) {
-      _topPath.lineTo(point.x, point.y);
+    final last = groundPoints.last;
+    final minY = groundPoints.map((p) => p.y).reduce(min);
+    final bottomY = minY + _fillDepthMeters;
+
+    _fillPath.lineTo(last.x, bottomY);
+    _fillPath.lineTo(first.x, bottomY);
+    _fillPath.close();
+
+    final p0 = groundPoints.first;
+    _topPath.moveTo(p0.x, p0.y);
+    for (int i = 1; i < groundPoints.length; i++) {
+      _topPath.lineTo(groundPoints[i].x, groundPoints[i].y);
     }
+    for (int i = groundPoints.length - 1; i >= 0; i--) {
+      _topPath.lineTo(
+        groundPoints[i].x,
+        groundPoints[i].y + _topStripHeightMeters,
+      );
+    }
+    _topPath.close();
   }
 
   @override
