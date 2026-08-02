@@ -30,8 +30,6 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   bool _crashed = false;
   bool _finished = false;
   bool _outOfFuel = false;
-  int _coinsCollected = 0;
-  double _fuelLevel = 1.0;
   bool _roundSaved = false;
 
   // HUD animation
@@ -52,14 +50,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _game = GaragumRacingGame(roundConfig: _round);
     _game.onCrash = _onCarCrashed;
     _game.onFinish = _onRoundFinished;
-    _game.onCoinCollected = (count) {
-      if (mounted) setState(() => _coinsCollected = count);
-    };
-    _game.onFuelChanged = (level) {
-      if (mounted) setState(() => _fuelLevel = level);
-    };
     _game.onOutOfFuel = () {
-      if (mounted) setState(() => _outOfFuel = true);
+      // Use addPostFrameCallback so setState fires after the current build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _outOfFuel = true);
+      });
     };
 
     _hudCtrl = AnimationController(
@@ -88,23 +83,27 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _onCarCrashed() {
-    if (!mounted) return;
-    setState(() => _crashed = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _crashed = true);
+    });
   }
 
   void _onRoundFinished() {
-    if (!mounted || _roundSaved) return;
+    if (_roundSaved) return;
     _roundSaved = true;
     _saveProgress();
-    setState(() => _finished = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _finished = true);
+    });
   }
 
   Future<void> _saveProgress() async {
+    final collected = _game.coinNotifier.value;
     final progress = GameProgressService.instance;
-    await progress.addCoins(_coinsCollected);
+    await progress.addCoins(collected);
 
     // Only mark as completed if the player collected enough coins
-    if (_coinsCollected >= _round.requiredCoins) {
+    if (collected >= _round.requiredCoins) {
       await progress.completeRound(_round.roundIndex);
     }
   }
@@ -159,8 +158,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     ]);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) =>
-            RaceScreen(roundConfig: _round),
+        pageBuilder: (_, animation, __) => RaceScreen(roundConfig: _round),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
@@ -191,17 +189,23 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Fuel bar — live level from game
-                        _FuelBar(level: _fuelLevel),
+                        // Fuel bar — driven by ValueNotifier, no setState
+                        ValueListenableBuilder<double>(
+                          valueListenable: _game.fuelNotifier,
+                          builder: (_, level, __) => _FuelBar(level: level),
+                        ),
                         const SizedBox(height: 6),
-                        // Coin counter (toplanan / gerekli)
-                        _CoinCounter(
-                          collected: _coinsCollected,
-                          required: _round.requiredCoins,
-                          total: _round.totalCoins,
+                        // Coin counter — driven by ValueNotifier
+                        ValueListenableBuilder<int>(
+                          valueListenable: _game.coinNotifier,
+                          builder: (_, count, __) => _CoinCounter(
+                            collected: count,
+                            required: _round.requiredCoins,
+                            total: _round.totalCoins,
+                          ),
                         ),
                         const SizedBox(height: 4),
-                        // Distance progress
+                        // Distance progress (rebuilt only with setState on crash/finish)
                         _DistanceCounter(
                           current: _game.distance,
                           goal: _round.distanceMeters,
@@ -265,8 +269,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                   child: PedalButton(
                     width: 90,
                     assetPath: 'assets/images/ui/pedal_gas.png',
-                    pressedAssetPath:
-                        'assets/images/ui/pedal_gas_pressed.png',
+                    pressedAssetPath: 'assets/images/ui/pedal_gas_pressed.png',
                     onPressedChanged: (pressed) {
                       setState(() => _gasPressed = pressed);
                       _updateThrottle();
@@ -298,7 +301,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
           if (_crashed && !_finished)
             _CrashOverlay(
               distanceMeters: _game.distance,
-              coinsCollected: _coinsCollected,
+              coinsCollected: _game.coinNotifier.value,
               onRestart: _restart,
               onLevels: _goToLevels,
               onMenu: _goToMenu,
@@ -308,7 +311,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
           if (_finished)
             _FinishOverlay(
               round: _round,
-              coinsCollected: _coinsCollected,
+              coinsCollected: _game.coinNotifier.value,
               onLevels: _goToLevels,
               onRestart: _restart,
               onMenu: _goToMenu,
@@ -384,8 +387,7 @@ class _CoinCounter extends StatelessWidget {
             fontWeight: FontWeight.w900,
             letterSpacing: 1,
             shadows: const [
-              Shadow(
-                  color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
+              Shadow(color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
             ],
           ),
         ),
@@ -409,11 +411,8 @@ class _DistanceCounter extends StatelessWidget {
           'assets/images/ui/icon_distance.png',
           width: 20,
           height: 20,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.straighten,
-            color: Colors.white,
-            size: 20,
-          ),
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.straighten, color: Colors.white, size: 20),
         ),
         const SizedBox(width: 8),
         Text(
@@ -424,8 +423,7 @@ class _DistanceCounter extends StatelessWidget {
             fontWeight: FontWeight.w700,
             letterSpacing: 1,
             shadows: [
-              Shadow(
-                  color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
+              Shadow(color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
             ],
           ),
         ),
@@ -447,8 +445,8 @@ class _FuelBar extends StatelessWidget {
     final List<Color> fillColors = level > 0.5
         ? [const Color(0xFF76FF03), const Color(0xFFC6FF00)]
         : level > 0.25
-            ? [const Color(0xFFFFD700), const Color(0xFFFFA000)]
-            : [const Color(0xFFFF3300), const Color(0xFFFF6600)];
+        ? [const Color(0xFFFFD700), const Color(0xFFFFA000)]
+        : [const Color(0xFFFF3300), const Color(0xFFFF6600)];
 
     return Row(
       children: [
@@ -458,9 +456,7 @@ class _FuelBar extends StatelessWidget {
           height: 22,
           errorBuilder: (_, __, ___) => Icon(
             Icons.local_gas_station,
-            color: level > 0.25
-                ? const Color(0xFFFF3333)
-                : Colors.red,
+            color: level > 0.25 ? const Color(0xFFFF3333) : Colors.red,
             size: 22,
           ),
         ),
@@ -515,9 +511,10 @@ class _PauseButtonState extends State<_PauseButton>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.88,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -578,13 +575,15 @@ class _DashboardGauges extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rpmFactor = (throttle.abs() * 0.85 +
-            (gasPressed || brakePressed ? 0.15 : 0.0))
-        .clamp(0.0, 1.0);
+    final rpmFactor =
+        (throttle.abs() * 0.85 + (gasPressed || brakePressed ? 0.15 : 0.0))
+            .clamp(0.0, 1.0);
     final rpmAngle = (-120 + rpmFactor * 240) * (math.pi / 180);
 
-    final boostFactor =
-        (gasPressed ? 0.9 : (brakePressed ? 0.4 : 0.0)).clamp(0.0, 1.0);
+    final boostFactor = (gasPressed ? 0.9 : (brakePressed ? 0.4 : 0.0)).clamp(
+      0.0,
+      1.0,
+    );
     final boostAngle = (-120 + boostFactor * 240) * (math.pi / 180);
 
     return Row(
@@ -651,11 +650,8 @@ class _GaugeWidget extends StatelessWidget {
               width: size * 0.75,
               height: size * 0.75,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Container(
-                width: 2,
-                height: size * 0.35,
-                color: Colors.red,
-              ),
+              errorBuilder: (_, __, ___) =>
+                  Container(width: 2, height: size * 0.35, color: Colors.red),
             ),
           ),
         ],
@@ -739,10 +735,7 @@ class _OutOfFuelOverlay extends StatelessWidget {
               const SizedBox(height: 6),
               const Text(
                 'Ýolda ýangyç bidonyny almagy unutmaň!',
-                style: TextStyle(
-                  color: Color(0xFFFFD98C),
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Color(0xFFFFD98C), fontSize: 12),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 22),
@@ -798,12 +791,10 @@ class _PauseOverlay extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF1C0E06),
             borderRadius: BorderRadius.circular(24),
-            border:
-                Border.all(color: const Color(0x55E8A33D), width: 1.5),
+            border: Border.all(color: const Color(0x55E8A33D), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color:
-                    const Color(0xFFE8601A).withValues(alpha: 0.15),
+                color: const Color(0xFFE8601A).withValues(alpha: 0.15),
                 blurRadius: 40,
                 spreadRadius: 5,
               ),
@@ -832,22 +823,25 @@ class _PauseOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               _OverlayBtn(
-                  label: 'DOWAM ET',
-                  icon: Icons.play_arrow_rounded,
-                  primary: true,
-                  onTap: onResume),
+                label: 'DOWAM ET',
+                icon: Icons.play_arrow_rounded,
+                primary: true,
+                onTap: onResume,
+              ),
               const SizedBox(height: 10),
               _OverlayBtn(
-                  label: 'TÄZEDEN',
-                  icon: Icons.replay_rounded,
-                  primary: false,
-                  onTap: onRestart),
+                label: 'TÄZEDEN',
+                icon: Icons.replay_rounded,
+                primary: false,
+                onTap: onRestart,
+              ),
               const SizedBox(height: 10),
               _OverlayBtn(
-                  label: 'BAŞ MENÝU',
-                  icon: Icons.home_rounded,
-                  primary: false,
-                  onTap: onMenu),
+                label: 'BAŞ MENÝU',
+                icon: Icons.home_rounded,
+                primary: false,
+                onTap: onMenu,
+              ),
             ],
           ),
         ),
@@ -880,14 +874,12 @@ class _CrashOverlay extends StatelessWidget {
       child: Center(
         child: SingleChildScrollView(
           child: Container(
-            margin:
-                const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+            margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: const Color(0xFF1F0C05),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                  color: const Color(0xFFFF5500), width: 2),
+              border: Border.all(color: const Color(0xFFFF5500), width: 2),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFF4500).withValues(alpha: 0.25),
@@ -906,15 +898,19 @@ class _CrashOverlay extends StatelessWidget {
                     color: const Color(0x33FF4500),
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: const Color(0xFFFF5500), width: 2),
+                      color: const Color(0xFFFF5500),
+                      width: 2,
+                    ),
                   ),
-                  child: const Icon(Icons.warning_amber_rounded,
-                      color: Color(0xFFFF5500), size: 34),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFFF5500),
+                    size: 34,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ShaderMask(
-                  shaderCallback: (bounds) =>
-                      const LinearGradient(
+                  shaderCallback: (bounds) => const LinearGradient(
                     colors: [Color(0xFFFF4500), Color(0xFFFF8C1A)],
                   ).createShader(bounds),
                   child: const Text(
@@ -931,42 +927,51 @@ class _CrashOverlay extends StatelessWidget {
                 Text(
                   'Aralygyňyz: ${distanceMeters.floor()} m',
                   style: const TextStyle(
-                      color: Color(0xFFFFD98C), fontSize: 14),
+                    color: Color(0xFFFFD98C),
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.monetization_on,
-                        color: Color(0xFFFFD700), size: 16),
+                    const Icon(
+                      Icons.monetization_on,
+                      color: Color(0xFFFFD700),
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Toplanan: $coinsCollected',
                       style: const TextStyle(
-                          color: Color(0xFFFFD700),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700),
+                        color: Color(0xFFFFD700),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 _OverlayBtn(
-                    label: 'TÄZEDEN BAŞLA',
-                    icon: Icons.replay_rounded,
-                    primary: true,
-                    onTap: onRestart),
+                  label: 'TÄZEDEN BAŞLA',
+                  icon: Icons.replay_rounded,
+                  primary: true,
+                  onTap: onRestart,
+                ),
                 const SizedBox(height: 10),
                 _OverlayBtn(
-                    label: 'TURLAR',
-                    icon: Icons.list_rounded,
-                    primary: false,
-                    onTap: onLevels),
+                  label: 'TURLAR',
+                  icon: Icons.list_rounded,
+                  primary: false,
+                  onTap: onLevels,
+                ),
                 const SizedBox(height: 10),
                 _OverlayBtn(
-                    label: 'BAŞ MENÝU',
-                    icon: Icons.home_rounded,
-                    primary: false,
-                    onTap: onMenu),
+                  label: 'BAŞ MENÝU',
+                  icon: Icons.home_rounded,
+                  primary: false,
+                  onTap: onMenu,
+                ),
               ],
             ),
           ),
@@ -1008,13 +1013,19 @@ class _FinishOverlayState extends State<_FinishOverlay>
   void initState() {
     super.initState();
     _scaleCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
     _coinCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
     _scale = CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
-    _coinCount = Tween<double>(begin: 0, end: widget.coinsCollected.toDouble())
-        .animate(CurvedAnimation(parent: _coinCtrl, curve: Curves.easeOut));
+    _coinCount = Tween<double>(
+      begin: 0,
+      end: widget.coinsCollected.toDouble(),
+    ).animate(CurvedAnimation(parent: _coinCtrl, curve: Curves.easeOut));
 
     _scaleCtrl.forward();
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -1032,8 +1043,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
   @override
   Widget build(BuildContext context) {
     final passed = widget.coinsCollected >= widget.round.requiredCoins;
-    final nextUnlocked =
-        passed && widget.round.roundIndex < 10;
+    final nextUnlocked = passed && widget.round.roundIndex < 10;
 
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
@@ -1041,8 +1051,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
         child: ScaleTransition(
           scale: _scale,
           child: Container(
-            margin:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: const Color(0xFF0D1F0D),
@@ -1055,10 +1064,11 @@ class _FinishOverlayState extends State<_FinishOverlay>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: (passed
-                          ? const Color(0xFF76FF03)
-                          : const Color(0xFFFF8C1A))
-                      .withValues(alpha: 0.2),
+                  color:
+                      (passed
+                              ? const Color(0xFF76FF03)
+                              : const Color(0xFFFF8C1A))
+                          .withValues(alpha: 0.2),
                   blurRadius: 50,
                   spreadRadius: 10,
                 ),
@@ -1093,14 +1103,8 @@ class _FinishOverlayState extends State<_FinishOverlay>
                 ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
                     colors: passed
-                        ? [
-                            const Color(0xFF76FF03),
-                            const Color(0xFFCCFF00)
-                          ]
-                        : [
-                            const Color(0xFFFF8C1A),
-                            const Color(0xFFFFD700)
-                          ],
+                        ? [const Color(0xFF76FF03), const Color(0xFFCCFF00)]
+                        : [const Color(0xFFFF8C1A), const Color(0xFFFFD700)],
                   ).createShader(bounds),
                   child: Text(
                     passed ? 'TAMAMLADY!' : 'TUR GUTARDY',
@@ -1158,7 +1162,9 @@ class _FinishOverlayState extends State<_FinishOverlay>
                 // Required info
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(10),
@@ -1197,18 +1203,25 @@ class _FinishOverlayState extends State<_FinishOverlay>
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0x3376FF03),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: const Color(0xFF76FF03), width: 1),
+                        color: const Color(0xFF76FF03),
+                        width: 1,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.lock_open_rounded,
-                            color: Color(0xFF76FF03), size: 16),
+                        const Icon(
+                          Icons.lock_open_rounded,
+                          color: Color(0xFF76FF03),
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'TUR ${widget.round.roundIndex + 1} AÇYLDY!',
@@ -1227,22 +1240,25 @@ class _FinishOverlayState extends State<_FinishOverlay>
                 const SizedBox(height: 24),
 
                 _OverlayBtn(
-                    label: 'TURLAR',
-                    icon: Icons.list_rounded,
-                    primary: true,
-                    onTap: widget.onLevels),
+                  label: 'TURLAR',
+                  icon: Icons.list_rounded,
+                  primary: true,
+                  onTap: widget.onLevels,
+                ),
                 const SizedBox(height: 10),
                 _OverlayBtn(
-                    label: 'TÄZEDEN',
-                    icon: Icons.replay_rounded,
-                    primary: false,
-                    onTap: widget.onRestart),
+                  label: 'TÄZEDEN',
+                  icon: Icons.replay_rounded,
+                  primary: false,
+                  onTap: widget.onRestart,
+                ),
                 const SizedBox(height: 10),
                 _OverlayBtn(
-                    label: 'BAŞ MENÝU',
-                    icon: Icons.home_rounded,
-                    primary: false,
-                    onTap: widget.onMenu),
+                  label: 'BAŞ MENÝU',
+                  icon: Icons.home_rounded,
+                  primary: false,
+                  onTap: widget.onMenu,
+                ),
               ],
             ),
           ),
@@ -1285,9 +1301,7 @@ class _OverlayBtn extends StatelessWidget {
               : null,
           color: primary ? null : const Color(0x22E8A33D),
           border: Border.all(
-            color: primary
-                ? const Color(0xFFFFAA44)
-                : const Color(0x44E8A33D),
+            color: primary ? const Color(0xFFFFAA44) : const Color(0x44E8A33D),
             width: 1.5,
           ),
         ),

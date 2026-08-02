@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/round_config.dart';
 import 'audio/audio_manager.dart';
@@ -43,8 +44,6 @@ class GaragumRacingGame extends Forge2DGame {
   VoidCallback? onCrash;
   VoidCallback? onFinish;
   VoidCallback? onOutOfFuel;
-  Function(int)? onCoinCollected;
-  Function(double)? onFuelChanged;
   bool isCrashed = false;
   bool _isFinished = false;
   bool _outOfFuel = false;
@@ -52,8 +51,12 @@ class GaragumRacingGame extends Forge2DGame {
   int _coinsCollected = 0;
   int get coinsCollected => _coinsCollected;
 
-  double _fuel = 1.0; // 0.0 – 1.0
-  double get fuel => _fuel;
+  /// ValueNotifiers — the RaceScreen listens to these directly.
+  /// Updating them never calls setState() during build.
+  final ValueNotifier<double> fuelNotifier = ValueNotifier(1.0);
+  final ValueNotifier<int> coinNotifier = ValueNotifier(0);
+
+  double get fuel => fuelNotifier.value;
 
   double _throttleInput = 0;
   final Vector2 _lastCameraPosition = Vector2.zero();
@@ -150,7 +153,7 @@ class GaragumRacingGame extends Forge2DGame {
 
       await world.add(ObstacleComponent(
         type: type,
-        startPosition: Vector2(curX, groundY - halfH),
+        startPosition: Vector2(curX, groundY - halfH + 0.15),
         groundAngle: groundAngle,
       ));
     }
@@ -178,7 +181,7 @@ class GaragumRacingGame extends Forge2DGame {
       final coin = CoinComponent(worldPosition: coinPos);
       coin.onCollected = () {
         _coinsCollected++;
-        onCoinCollected?.call(_coinsCollected);
+        coinNotifier.value = _coinsCollected;
         audio.playCoinSound();
       };
       await world.add(coin);
@@ -207,8 +210,8 @@ class GaragumRacingGame extends Forge2DGame {
 
         final canister = FuelCanisterComponent(worldPosition: canisterPos);
         canister.onCollected = () {
-          _fuel = (_fuel + 0.55).clamp(0.0, 1.0); // refill ~55%
-          onFuelChanged?.call(_fuel);
+          fuelNotifier.value =
+              (fuelNotifier.value + 0.55).clamp(0.0, 1.0); // refill ~55%
           audio.playFuelSound();
         };
         await world.add(canister);
@@ -241,13 +244,14 @@ class GaragumRacingGame extends Forge2DGame {
     if (!isCrashed && !_isFinished && !_outOfFuel) {
       final throttleAbs = _throttleInput.abs();
       if (throttleAbs > 0) {
-        _fuel -= (_fuelBurnRate / _fullFuelSeconds) * throttleAbs * dt;
-        _fuel = _fuel.clamp(0.0, 1.0);
-        onFuelChanged?.call(_fuel);
+        final newFuel = (fuelNotifier.value -
+                (_fuelBurnRate / _fullFuelSeconds) * throttleAbs * dt)
+            .clamp(0.0, 1.0);
+        fuelNotifier.value = newFuel;
       }
 
       // Out of fuel check
-      if (_fuel <= 0 && !_outOfFuel) {
+      if (fuelNotifier.value <= 0 && !_outOfFuel) {
         _outOfFuel = true;
         audio.setEngineIntensity(0);
         audio.stopEngine();

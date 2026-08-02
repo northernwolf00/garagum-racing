@@ -108,12 +108,22 @@ class Car extends Component with HasGameReference {
     // G-force inertial displacement & tilt
     final targetDispX = (-localAccelX * 0.004).clamp(-0.08, 0.08);
     final targetDispY = (localAccelY * 0.003).clamp(-0.05, 0.05);
-    final targetRot = (-localAccelX * 0.012 - chassisBody.angularVelocity * 0.12).clamp(-0.35, 0.35);
+    final targetRot =
+        (-localAccelX * 0.012 - chassisBody.angularVelocity * 0.12).clamp(
+          -0.35,
+          0.35,
+        );
 
     // Spring forces toward target state
-    final springForceX = -_springStiffness * (_headDisplacement.x - targetDispX) - _springDamping * _headVelocity.x;
-    final springForceY = -_springStiffness * (_headDisplacement.y - targetDispY) - _springDamping * _headVelocity.y;
-    final springTorque = -_springStiffness * (_headRotation - targetRot) - _springDamping * _headRotVelocity;
+    final springForceX =
+        -_springStiffness * (_headDisplacement.x - targetDispX) -
+        _springDamping * _headVelocity.x;
+    final springForceY =
+        -_springStiffness * (_headDisplacement.y - targetDispY) -
+        _springDamping * _headVelocity.y;
+    final springTorque =
+        -_springStiffness * (_headRotation - targetRot) -
+        _springDamping * _headRotVelocity;
 
     _headVelocity.x += springForceX * dt;
     _headVelocity.y += springForceY * dt;
@@ -161,11 +171,22 @@ class Car extends Component with HasGameReference {
     return joint;
   }
 
-  /// -1 (full brake / reverse) .. 0 (idle) .. 1 (full gas)
+  /// -1 (full brake / reverse) .. 0 (idle, freewheeling) .. 1 (full gas)
+  ///
+  /// At throttle 0 the drive motor is disabled entirely rather than being
+  /// servoed to zero speed — otherwise the revolute motor actively holds
+  /// the wheels at zero angular velocity (a permanent handbrake), so the
+  /// car would stop dead the instant the gas pedal is released instead of
+  /// coasting on momentum and gravity like a real vehicle.
   void setThrottle(double throttle) {
-    final speed = maxMotorSpeed * throttle;
-    frontJoint.motorSpeed = speed;
-    rearJoint.motorSpeed = speed;
+    final coasting = throttle == 0;
+    frontJoint.enableMotor(!coasting);
+    rearJoint.enableMotor(!coasting);
+    if (!coasting) {
+      final speed = maxMotorSpeed * throttle;
+      frontJoint.motorSpeed = speed;
+      rearJoint.motorSpeed = speed;
+    }
   }
 
   void gas() => setThrottle(1);
@@ -178,8 +199,10 @@ class Car extends Component with HasGameReference {
   bool checkCrashed(Terrain terrain) {
     final angle = chassisBody.angle;
     final restingHeadY = _driverBodyOffsetYM - _driverBodySizeM * 0.26;
-    final localHead = Vector2(_headDisplacement.x, restingHeadY + _headDisplacement.y)
-      ..rotate(angle);
+    final localHead = Vector2(
+      _headDisplacement.x,
+      restingHeadY + _headDisplacement.y,
+    )..rotate(angle);
     final headPos = chassisBody.position + localHead;
 
     final headGroundY = -terrain.heightAt(headPos.x);

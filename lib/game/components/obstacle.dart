@@ -29,26 +29,27 @@ class ObstacleComponent extends BodyComponent {
 
   late final Sprite _sprite;
 
+  /// World-space bounding sizes tuned for smooth car traversal.
   static Vector2 getSizeForType(ObstacleType type) {
     switch (type) {
       case ObstacleType.sazak:
-        return Vector2(1.6, 0.8);
+        return Vector2(1.3, 0.5);
       case ObstacleType.rockBig:
-        return Vector2(2.0, 1.3);
+        return Vector2(1.5, 0.75);
       case ObstacleType.rockSmall:
-        return Vector2(0.9, 0.7);
+        return Vector2(0.8, 0.45);
       case ObstacleType.sandMound:
-        return Vector2(2.6, 0.9);
+        return Vector2(2.2, 0.6);
       case ObstacleType.sandRamp:
-        return Vector2(3.0, 1.2);
+        return Vector2(2.6, 0.85);
       case ObstacleType.tyreStack:
-        return Vector2(1.0, 1.4);
+        return Vector2(0.9, 1.1);
       case ObstacleType.barrel:
-        return Vector2(0.9, 1.2);
+        return Vector2(0.8, 1.0);
       case ObstacleType.crate:
-        return Vector2(1.0, 1.0);
+        return Vector2(0.85, 0.85);
       case ObstacleType.signpost:
-        return Vector2(1.1, 2.0);
+        return Vector2(0.8, 1.5);
     }
   }
 
@@ -89,64 +90,91 @@ class ObstacleComponent extends BodyComponent {
     final halfW = dims.x / 2;
     final halfH = dims.y / 2;
 
+    // Only terrain features like ramps and sand mounds are static.
+    // Rocks and destructible items are sloped or dynamic so the car doesn't get stuck.
     final isStatic = type == ObstacleType.sandMound ||
         type == ObstacleType.sandRamp ||
-        type == ObstacleType.rockBig ||
-        type == ObstacleType.signpost;
+        type == ObstacleType.rockBig;
 
     final bodyDef = BodyDef(
       type: isStatic ? BodyType.static : BodyType.dynamic,
       position: startPosition,
       angle: groundAngle,
-      linearDamping: 0.8,
-      angularDamping: 1.2,
+      linearDamping: 1.5,
+      angularDamping: 2.0,
     );
 
     final body = world.createBody(bodyDef);
+    body.userData = this;
 
     Shape shape;
-    if (type == ObstacleType.rockSmall || type == ObstacleType.barrel) {
-      shape = CircleShape()..radius = math.min(halfW, halfH);
+
+    if (type == ObstacleType.rockBig || type == ObstacleType.rockSmall) {
+      // Sloped trapezoid shape so car wheels can climb over smoothly instead of hitting a vertical wall
+      final vertices = [
+        Vector2(-halfW, halfH),
+        Vector2(halfW, halfH),
+        Vector2(halfW * 0.45, -halfH),
+        Vector2(-halfW * 0.45, -halfH),
+      ];
+      shape = PolygonShape()..set(vertices);
+    } else if (type == ObstacleType.sandMound) {
+      // Smooth mound trapezoid
+      final vertices = [
+        Vector2(-halfW, halfH),
+        Vector2(halfW, halfH),
+        Vector2(halfW * 0.3, -halfH),
+        Vector2(-halfW * 0.3, -halfH),
+      ];
+      shape = PolygonShape()..set(vertices);
     } else if (type == ObstacleType.sandRamp) {
+      // Smooth jump ramp (slope from left to right)
       final vertices = [
         Vector2(-halfW, halfH),
         Vector2(halfW, halfH),
         Vector2(halfW, -halfH),
       ];
       shape = PolygonShape()..set(vertices);
+    } else if (type == ObstacleType.barrel || type == ObstacleType.sazak) {
+      // Circle shape rolls easily when bumped
+      shape = CircleShape()..radius = math.min(halfW, halfH);
     } else {
       shape = PolygonShape()..setAsBox(halfW, halfH, Vector2.zero(), 0);
     }
 
-    double density = 1.0;
-    double friction = 0.8;
+    double density = 0.4;
+    double friction = 0.3;
     double restitution = 0.1;
 
     switch (type) {
       case ObstacleType.sazak:
-        density = 1.2;
-        friction = 0.9;
-        restitution = 0.05;
+        density = 0.3;
+        friction = 0.3;
+        restitution = 0.1;
         break;
       case ObstacleType.rockBig:
-        density = 5.0;
-        friction = 1.0;
+        density = 0;
+        friction = 0.4; // smooth surface to climb
         break;
       case ObstacleType.rockSmall:
-        density = 2.0;
-        friction = 0.8;
-        restitution = 0.3;
+        density = 0;
+        friction = 0.3;
         break;
       case ObstacleType.tyreStack:
-        density = 0.9;
-        friction = 0.7;
-        restitution = 0.4;
+        density = 0.3;
+        friction = 0.4;
+        restitution = 0.3;
         break;
       case ObstacleType.barrel:
       case ObstacleType.crate:
-        density = 0.8;
-        friction = 0.6;
-        restitution = 0.15;
+        density = 0.25;
+        friction = 0.3;
+        restitution = 0.2;
+        break;
+      case ObstacleType.signpost:
+        density = 0.15;
+        friction = 0.2;
+        restitution = 0.1;
         break;
       default:
         break;
@@ -165,12 +193,11 @@ class ObstacleComponent extends BodyComponent {
 
   @override
   void render(Canvas canvas) {
-    // Note: Flame Forge2D BodyComponent automatically translates & rotates
-    // the canvas to body.position and body.angle before calling render().
+    final dims = size;
     _sprite.render(
       canvas,
       anchor: Anchor.center,
-      size: size,
+      size: dims,
     );
   }
 }
