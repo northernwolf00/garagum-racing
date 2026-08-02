@@ -678,88 +678,103 @@ class _OutOfFuelOverlay extends StatelessWidget {
     return Container(
       color: Colors.black.withValues(alpha: 0.82),
       child: Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 40),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F0A00),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFFF8C00), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF8C00).withValues(alpha: 0.25),
-                blurRadius: 50,
-                spreadRadius: 8,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: const Color(0x33FF8C00),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFFF8C00), width: 2),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 480),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F0A00),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFF8C00), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF8C00).withValues(alpha: 0.25),
+                  blurRadius: 30,
+                  spreadRadius: 4,
                 ),
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/ui/icon_fuel.png',
-                    width: 38,
-                    height: 38,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.local_gas_station,
-                      color: Color(0xFFFF8C00),
-                      size: 38,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0x33FF8C00),
+                    shape: BoxShape.circle,
+                    border:
+                        Border.all(color: const Color(0xFFFF8C00), width: 2),
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/ui/icon_fuel.png',
+                      width: 30,
+                      height: 30,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.local_gas_station,
+                        color: Color(0xFFFF8C00),
+                        size: 30,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Color(0xFFFF8C00), Color(0xFFFFD700)],
-                ).createShader(bounds),
-                child: const Text(
-                  'ÝANGYÇ GUTARDY!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
+                const SizedBox(height: 10),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFFFF8C00), Color(0xFFFFD700)],
+                  ).createShader(bounds),
+                  child: const Text(
+                    'ÝANGYÇ GUTARDY!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 3,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Ýolda ýangyç bidonyny almagy unutmaň!',
-                style: TextStyle(color: Color(0xFFFFD98C), fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 22),
-              _OverlayBtn(
-                label: 'TÄZEDEN BAŞLA',
-                icon: Icons.replay_rounded,
-                primary: true,
-                onTap: onRestart,
-              ),
-              const SizedBox(height: 10),
-              _OverlayBtn(
-                label: 'TURLAR',
-                icon: Icons.list_rounded,
-                primary: false,
-                onTap: onLevels,
-              ),
-              const SizedBox(height: 10),
-              _OverlayBtn(
-                label: 'BAŞ MENÝU',
-                icon: Icons.home_rounded,
-                primary: false,
-                onTap: onMenu,
-              ),
-            ],
+                const SizedBox(height: 4),
+                const Text(
+                  'Ýolda ýangyç bidonyny almagy unutmaň!',
+                  style: TextStyle(color: Color(0xFFFFD98C), fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'TÄZEDEN',
+                        icon: Icons.replay_rounded,
+                        primary: true,
+                        onTap: onRestart,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'TURLAR',
+                        icon: Icons.list_rounded,
+                        primary: false,
+                        onTap: onLevels,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'MENÝU',
+                        icon: Icons.home_rounded,
+                        primary: false,
+                        onTap: onMenu,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -785,64 +800,78 @@ class _PauseOverlay extends StatelessWidget {
     return Container(
       color: Colors.black.withValues(alpha: 0.75),
       child: Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 40),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1C0E06),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0x55E8A33D), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFE8601A).withValues(alpha: 0.15),
-                blurRadius: 40,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0x55E8A33D),
-                  borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 440),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C0E06),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0x55E8A33D), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFE8601A).withValues(alpha: 0.15),
+                  blurRadius: 30,
+                  spreadRadius: 4,
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'DURALDY',
-                style: TextStyle(
-                  color: Color(0xFFFFD98C),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 6,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0x55E8A33D),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              _OverlayBtn(
-                label: 'DOWAM ET',
-                icon: Icons.play_arrow_rounded,
-                primary: true,
-                onTap: onResume,
-              ),
-              const SizedBox(height: 10),
-              _OverlayBtn(
-                label: 'TÄZEDEN',
-                icon: Icons.replay_rounded,
-                primary: false,
-                onTap: onRestart,
-              ),
-              const SizedBox(height: 10),
-              _OverlayBtn(
-                label: 'BAŞ MENÝU',
-                icon: Icons.home_rounded,
-                primary: false,
-                onTap: onMenu,
-              ),
-            ],
+                const SizedBox(height: 10),
+                const Text(
+                  'DURALDY',
+                  style: TextStyle(
+                    color: Color(0xFFFFD98C),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'DOWAM ET',
+                        icon: Icons.play_arrow_rounded,
+                        primary: true,
+                        onTap: onResume,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'TÄZEDEN',
+                        icon: Icons.replay_rounded,
+                        primary: false,
+                        onTap: onRestart,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'MENÝU',
+                        icon: Icons.home_rounded,
+                        primary: false,
+                        onTap: onMenu,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -873,18 +902,20 @@ class _CrashOverlay extends StatelessWidget {
       color: Colors.black.withValues(alpha: 0.82),
       child: Center(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-            padding: const EdgeInsets.all(24),
+            constraints: const BoxConstraints(maxWidth: 480),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: const Color(0xFF1F0C05),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: const Color(0xFFFF5500), width: 2),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFF4500).withValues(alpha: 0.25),
-                  blurRadius: 50,
-                  spreadRadius: 8,
+                  blurRadius: 30,
+                  spreadRadius: 4,
                 ),
               ],
             ),
@@ -892,23 +923,21 @@ class _CrashOverlay extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: const Color(0x33FF4500),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFFF5500),
-                      width: 2,
-                    ),
+                    border:
+                        Border.all(color: const Color(0xFFFF5500), width: 2),
                   ),
                   child: const Icon(
                     Icons.warning_amber_rounded,
                     color: Color(0xFFFF5500),
-                    size: 34,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 ShaderMask(
                   shaderCallback: (bounds) => const LinearGradient(
                     colors: [Color(0xFFFF4500), Color(0xFFFF8C1A)],
@@ -917,60 +946,75 @@ class _CrashOverlay extends StatelessWidget {
                     'AGDARYLDYŇYZ!',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
+                      letterSpacing: 3,
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Aralygyňyz: ${distanceMeters.floor()} m',
-                  style: const TextStyle(
-                    color: Color(0xFFFFD98C),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.monetization_on,
-                      color: Color(0xFFFFD700),
-                      size: 16,
+                    Text(
+                      'Aralygyňyz: ${distanceMeters.floor()} m',
+                      style: const TextStyle(
+                        color: Color(0xFFFFD98C),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Image.asset(
+                      'assets/images/ui/coin.png',
+                      width: 16,
+                      height: 16,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.monetization_on,
+                        color: Color(0xFFFFD700),
+                        size: 16,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'Toplanan: $coinsCollected',
                       style: const TextStyle(
                         color: Color(0xFFFFD700),
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                _OverlayBtn(
-                  label: 'TÄZEDEN BAŞLA',
-                  icon: Icons.replay_rounded,
-                  primary: true,
-                  onTap: onRestart,
-                ),
-                const SizedBox(height: 10),
-                _OverlayBtn(
-                  label: 'TURLAR',
-                  icon: Icons.list_rounded,
-                  primary: false,
-                  onTap: onLevels,
-                ),
-                const SizedBox(height: 10),
-                _OverlayBtn(
-                  label: 'BAŞ MENÝU',
-                  icon: Icons.home_rounded,
-                  primary: false,
-                  onTap: onMenu,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'TÄZEDEN',
+                        icon: Icons.replay_rounded,
+                        primary: true,
+                        onTap: onRestart,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'TURLAR',
+                        icon: Icons.list_rounded,
+                        primary: false,
+                        onTap: onLevels,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _OverlayBtn(
+                        label: 'MENÝU',
+                        icon: Icons.home_rounded,
+                        primary: false,
+                        onTap: onMenu,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1048,218 +1092,247 @@ class _FinishOverlayState extends State<_FinishOverlay>
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
       child: Center(
-        child: ScaleTransition(
-          scale: _scale,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D1F0D),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: passed
-                    ? const Color(0xFF76FF03)
-                    : const Color(0xFFFF8C1A),
-                width: 2.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color:
-                      (passed
-                              ? const Color(0xFF76FF03)
-                              : const Color(0xFFFF8C1A))
-                          .withValues(alpha: 0.2),
-                  blurRadius: 50,
-                  spreadRadius: 10,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: ScaleTransition(
+            scale: _scale,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 480),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1F0D),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: passed
+                      ? const Color(0xFF76FF03)
+                      : const Color(0xFFFF8C1A),
+                  width: 2.0,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Trophy icon
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: passed
-                        ? const Color(0x2276FF03)
-                        : const Color(0x22FF8C1A),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    passed
-                        ? Icons.emoji_events_rounded
-                        : Icons.sports_score_rounded,
-                    color: passed
-                        ? const Color(0xFFFFD700)
-                        : const Color(0xFFFF8C1A),
-                    size: 42,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Title
-                ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: passed
-                        ? [const Color(0xFF76FF03), const Color(0xFFCCFF00)]
-                        : [const Color(0xFFFF8C1A), const Color(0xFFFFD700)],
-                  ).createShader(bounds),
-                  child: Text(
-                    passed ? 'TAMAMLADY!' : 'TUR GUTARDY',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-
-                Text(
-                  widget.round.title,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD98C),
-                    fontSize: 14,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Coin count animated
-                AnimatedBuilder(
-                  animation: _coinCount,
-                  builder: (_, __) => Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/images/ui/coin.png',
-                        width: 36,
-                        height: 36,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.monetization_on,
-                          color: Color(0xFFFFD700),
-                          size: 36,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        '+${_coinCount.value.toInt()}',
-                        style: const TextStyle(
-                          color: Color(0xFFFFD700),
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Required info
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        passed
-                            ? Icons.check_circle_rounded
-                            : Icons.cancel_rounded,
-                        color: passed
-                            ? const Color(0xFF76FF03)
-                            : const Color(0xFFFF4500),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        passed
-                            ? '${widget.coinsCollected} / ${widget.round.requiredCoins} coin — GEÇDI!'
-                            : '${widget.coinsCollected} / ${widget.round.requiredCoins} coin — ÝETMEDİ',
-                        style: TextStyle(
-                          color: passed
-                              ? const Color(0xFF76FF03)
-                              : const Color(0xFFFF6B35),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Next round unlocked notice
-                if (nextUnlocked) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0x3376FF03),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF76FF03),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.lock_open_rounded,
-                          color: Color(0xFF76FF03),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'TUR ${widget.round.roundIndex + 1} AÇYLDY!',
-                          style: const TextStyle(
-                            color: Color(0xFF76FF03),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color:
+                        (passed
+                                ? const Color(0xFF76FF03)
+                                : const Color(0xFFFF8C1A))
+                            .withValues(alpha: 0.2),
+                    blurRadius: 30,
+                    spreadRadius: 4,
                   ),
                 ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon + Title Row (compact landscape design)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: passed
+                              ? const Color(0x2276FF03)
+                              : const Color(0x22FF8C1A),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          passed
+                              ? Icons.emoji_events_rounded
+                              : Icons.sports_score_rounded,
+                          color: passed
+                              ? const Color(0xFFFFD700)
+                              : const Color(0xFFFF8C1A),
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShaderMask(
+                            shaderCallback: (bounds) => LinearGradient(
+                              colors: passed
+                                  ? [
+                                      const Color(0xFF76FF03),
+                                      const Color(0xFFCCFF00),
+                                    ]
+                                  : [
+                                      const Color(0xFFFF8C1A),
+                                      const Color(0xFFFFD700),
+                                    ],
+                            ).createShader(bounds),
+                            child: Text(
+                              passed ? 'TAMAMLADY!' : 'TUR GUTARDY',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            widget.round.title,
+                            style: const TextStyle(
+                              color: Color(0xFFFFD98C),
+                              fontSize: 12,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
 
-                const SizedBox(height: 24),
+                  // Coin count animated & status row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _coinCount,
+                        builder: (_, __) => Row(
+                          children: [
+                            Image.asset(
+                              'assets/images/ui/coin.png',
+                              width: 28,
+                              height: 28,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.monetization_on,
+                                color: Color(0xFFFFD700),
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '+${_coinCount.value.toInt()}',
+                              style: const TextStyle(
+                                color: Color(0xFFFFD700),
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              passed
+                                  ? Icons.check_circle_rounded
+                                  : Icons.cancel_rounded,
+                              color: passed
+                                  ? const Color(0xFF76FF03)
+                                  : const Color(0xFFFF4500),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              passed
+                                  ? '${widget.coinsCollected}/${widget.round.requiredCoins} GEÇDI!'
+                                  : '${widget.coinsCollected}/${widget.round.requiredCoins} ÝETMEDİ',
+                              style: TextStyle(
+                                color: passed
+                                    ? const Color(0xFF76FF03)
+                                    : const Color(0xFFFF6B35),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
 
-                _OverlayBtn(
-                  label: 'TURLAR',
-                  icon: Icons.list_rounded,
-                  primary: true,
-                  onTap: widget.onLevels,
-                ),
-                const SizedBox(height: 10),
-                _OverlayBtn(
-                  label: 'TÄZEDEN',
-                  icon: Icons.replay_rounded,
-                  primary: false,
-                  onTap: widget.onRestart,
-                ),
-                const SizedBox(height: 10),
-                _OverlayBtn(
-                  label: 'BAŞ MENÝU',
-                  icon: Icons.home_rounded,
-                  primary: false,
-                  onTap: widget.onMenu,
-                ),
-              ],
+                  // Next round unlocked notice
+                  if (nextUnlocked) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0x3376FF03),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF76FF03),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.lock_open_rounded,
+                            color: Color(0xFF76FF03),
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'TUR ${widget.round.roundIndex + 1} AÇYLDY!',
+                            style: const TextStyle(
+                              color: Color(0xFF76FF03),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+
+                  // Action Buttons Row (Responsive & Compact)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _OverlayBtn(
+                          label: 'TURLAR',
+                          icon: Icons.list_rounded,
+                          primary: true,
+                          onTap: widget.onLevels,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _OverlayBtn(
+                          label: 'TÄZEDEN',
+                          icon: Icons.replay_rounded,
+                          primary: false,
+                          onTap: widget.onRestart,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _OverlayBtn(
+                          label: 'MENÝU',
+                          icon: Icons.home_rounded,
+                          primary: false,
+                          onTap: widget.onMenu,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1288,10 +1361,9 @@ class _OverlayBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: double.infinity,
-        height: 48,
+        height: 42,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           gradient: primary
               ? const LinearGradient(
                   colors: [Color(0xFFFF8C1A), Color(0xFFE85A00)],
@@ -1311,16 +1383,19 @@ class _OverlayBtn extends StatelessWidget {
             Icon(
               icon,
               color: primary ? Colors.white : const Color(0xFFE8A33D),
-              size: 20,
+              size: 18,
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: primary ? Colors.white : const Color(0xFFE8A33D),
-                letterSpacing: 2,
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: primary ? Colors.white : const Color(0xFFE8A33D),
+                  letterSpacing: 1.2,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1329,3 +1404,4 @@ class _OverlayBtn extends StatelessWidget {
     );
   }
 }
+
