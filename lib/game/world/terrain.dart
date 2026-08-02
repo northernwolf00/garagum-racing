@@ -81,11 +81,12 @@ class Terrain extends BodyComponent {
     for (final span in bridgeSpans) {
       final bStart = span.startX;
       final bEnd = span.endX;
+      final bridgeDeckH = baseHeightAt(bStart);
+      final canalBedH = bridgeDeckH - canalDepth;
 
-      if (x >= bStart - 4.0 && x <= bEnd + 4.0) {
-        final bridgeDeckH = baseHeightAt(bStart);
-        final canalBedH = bridgeDeckH - canalDepth;
+      const rampLength = 12.0; // 12m gentle slope before & after bridge
 
+      if (x >= bStart - rampLength && x <= bEnd + rampLength) {
         if (x >= bStart + 2.5 && x <= bEnd - 2.5) {
           // Canal water bed directly underneath bridge center
           return canalBedH;
@@ -99,10 +100,20 @@ class Terrain extends BodyComponent {
           final t = (x - (bEnd - 2.5)) / 2.5;
           final smoothT = (1 - cos(t * pi)) / 2;
           return canalBedH + (bridgeDeckH - canalBedH) * smoothT;
-        } else {
-          // Land bank approach (bStart - 4.0 to bStart, and bEnd to bEnd + 4.0)
-          // Keep flat at bridgeDeckH so car transitions seamlessly onto bridge deck
+        } else if (x >= bStart - 2.5 && x <= bEnd + 2.5) {
+          // Flat approach & exit deck level
           return bridgeDeckH;
+        } else if (x < bStart - 2.5) {
+          // Smooth, gentle entry slope from dune terrain to bridge deck
+          final t = (x - (bStart - rampLength)) / (rampLength - 2.5);
+          final smoothT = (1 - cos(t.clamp(0.0, 1.0) * pi)) / 2;
+          return baseH + (bridgeDeckH - baseH) * smoothT;
+        } else {
+          // Smooth, gentle exit slope from bridge deck back to dune terrain
+          final t = (x - (bEnd + 2.5)) / (rampLength - 2.5);
+          final smoothT = (1 - cos(t.clamp(0.0, 1.0) * pi)) / 2;
+          final exitBaseH = baseHeightAt(bEnd + rampLength);
+          return bridgeDeckH + (exitBaseH - bridgeDeckH) * smoothT;
         }
       }
     }
@@ -111,7 +122,7 @@ class Terrain extends BodyComponent {
   }
 
   /// Checks if x falls within any bridge deck span or its canal embankment.
-  bool isInsideBridgeSpan(double x, {double extraMargin = 2.0}) {
+  bool isInsideBridgeSpan(double x, {double extraMargin = 12.0}) {
     for (final span in bridgeSpans) {
       if (x >= span.startX - extraMargin && x <= span.endX + extraMargin) {
         return true;

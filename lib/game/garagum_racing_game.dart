@@ -245,7 +245,9 @@ class GaragumRacingGame extends Forge2DGame {
 
   @override
   void update(double dt) {
-    super.update(dt);
+    final clampedDt = dt > _maxPhysicsDt ? _maxPhysicsDt : dt;
+    super.update(clampedDt);
+    dt = clampedDt;
 
     final currentCar = car;
     final currentTerrain = terrain;
