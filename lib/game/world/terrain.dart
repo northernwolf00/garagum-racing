@@ -5,6 +5,8 @@ import 'package:flame/flame.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:vector_math/vector_math_64.dart' show Matrix4;
 
+import '../../models/round_config.dart';
+
 /// Struct representing a bridge span along the x-axis.
 class BridgeSpan {
   const BridgeSpan({
@@ -23,8 +25,11 @@ class BridgeSpan {
 class Terrain extends BodyComponent {
   Terrain({
     this.segmentWidth = 0.35,
-    this.segmentCount = 3000,
-  }) : super(renderBody: false) {
+    RoundConfig? roundConfig,
+  })  : segmentCount = roundConfig != null
+            ? ((roundConfig.distanceMeters + 60.0) / 0.35).ceil().clamp(500, 8000)
+            : 3000,
+        super(renderBody: false) {
     _generateBridgeSpans();
   }
 

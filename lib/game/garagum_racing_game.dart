@@ -4,33 +4,56 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 
+import '../models/round_config.dart';
 import 'audio/audio_manager.dart';
 import 'components/car.dart';
+import 'components/coin.dart';
+import 'components/fuel_canister.dart';
 import 'components/obstacle.dart';
 import 'world/bridge.dart';
 import 'world/parallax_background.dart';
 import 'world/terrain.dart';
 
 /// Forge2D world with procedural dune terrain, bridges, road obstacles,
-/// a physics-driven car, a parallax dune backdrop and an engine-sound loop.
+/// coin pickups, fuel canisters, a physics-driven car, a parallax dune
+/// backdrop and an engine-sound loop.
 class GaragumRacingGame extends Forge2DGame {
-  GaragumRacingGame() : super(gravity: Vector2(0, 22), zoom: 28);
+  GaragumRacingGame({required this.roundConfig})
+      : super(gravity: Vector2(0, 22), zoom: 28);
+
+  final RoundConfig roundConfig;
 
   static const Color _skyColor = Color(0xFFFCE2A6);
-
-  /// How quickly the camera closes the gap to the car; higher = snappier.
   static const double _cameraFollowRate = 6;
-
-  /// How far above the terrain surface the car spawns.
   static const double _spawnClearance = 3;
   static const double _spawnX = 6;
+
+  /// Full tank in seconds of driving. Each round gives this much fuel.
+  /// Fuel canisters are placed so you can always theoretically finish
+  /// if you pick them up.
+  static const double _fullFuelSeconds = 40.0;
+
+  /// Fuel burn rate per second while the gas pedal is held.
+  static const double _fuelBurnRate = 1.0; // fraction per second
 
   Terrain? terrain;
   Car? car;
   final AudioManager audio = AudioManager();
 
   VoidCallback? onCrash;
+  VoidCallback? onFinish;
+  VoidCallback? onOutOfFuel;
+  Function(int)? onCoinCollected;
+  Function(double)? onFuelChanged;
   bool isCrashed = false;
+  bool _isFinished = false;
+  bool _outOfFuel = false;
+
+  int _coinsCollected = 0;
+  int get coinsCollected => _coinsCollected;
+
+  double _fuel = 1.0; // 0.0 – 1.0
+  double get fuel => _fuel;
 
   double _throttleInput = 0;
   final Vector2 _lastCameraPosition = Vector2.zero();
@@ -47,25 +70,31 @@ class GaragumRacingGame extends Forge2DGame {
 
     camera.backdrop = await ParallaxBackground.load(size);
 
-    final tComponent = Terrain();
+    final tComponent = Terrain(roundConfig: roundConfig);
     await world.add(tComponent);
     terrain = tComponent;
 
     // Add Canal Bridges along the route
     for (final bridgeSpan in tComponent.bridgeSpans) {
+      if (bridgeSpan.startX > roundConfig.distanceMeters + _spawnX) break;
       final deckY = -tComponent.baseHeightAt(bridgeSpan.startX);
       final canalBottomY = deckY + Terrain.canalDepth;
-      final bridgeComp = BridgeComponent(
+      await world.add(BridgeComponent(
         startX: bridgeSpan.startX,
         endX: bridgeSpan.endX,
         deckY: deckY,
         canalBottomY: canalBottomY,
-      );
-      await world.add(bridgeComp);
+      ));
     }
 
-    // Add Road Obstacles (Sazak, Daş / Rocks, Sand mounds, Tire stacks, etc.)
+    // Add road obstacles
     await _spawnRoadObstacles(tComponent);
+
+    // Add coins along the route
+    await _spawnCoins(tComponent);
+
+    // Add fuel canisters at danger intervals
+    await _spawnFuelCanisters(tComponent);
 
     final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
     final cComponent = Car(startPosition: Vector2(_spawnX, spawnY));
@@ -79,10 +108,14 @@ class GaragumRacingGame extends Forge2DGame {
     await audio.init();
   }
 
+  // ── Obstacle spawning ────────────────────────────────────────────────────
+
   Future<void> _spawnRoadObstacles(Terrain tComponent) async {
-    final rand = Random(42);
+    final rand = Random(roundConfig.roundIndex * 31);
     double curX = 15.0;
-    final maxX = tComponent.segmentCount * tComponent.segmentWidth - 35.0;
+    final maxX = _spawnX + roundConfig.distanceMeters + 20;
+    final baseStep = 10.0;
+    final stepDivisor = roundConfig.obstacleFrequency;
 
     final obstacleTypes = [
       ObstacleType.sazak,
@@ -99,17 +132,12 @@ class GaragumRacingGame extends Forge2DGame {
       ObstacleType.rockBig,
       ObstacleType.signpost,
     ];
-
-    int obsIdx = 0;
+    int obsIdx = roundConfig.roundIndex;
 
     while (curX < maxX) {
-      final step = 10.0 + rand.nextDouble() * 8.0;
+      final step = (baseStep / stepDivisor) + rand.nextDouble() * 6.0;
       curX += step;
-
-      // Do not spawn obstacles inside bridge canal spans or ramps
-      if (tComponent.isInsideBridgeSpan(curX, extraMargin: 5.0)) {
-        continue;
-      }
+      if (tComponent.isInsideBridgeSpan(curX, extraMargin: 5.0)) continue;
 
       final type = obstacleTypes[obsIdx % obstacleTypes.length];
       obsIdx++;
@@ -117,20 +145,80 @@ class GaragumRacingGame extends Forge2DGame {
       final groundH = tComponent.heightAt(curX);
       final groundY = -groundH;
       final groundAngle = tComponent.getGroundAngle(curX);
-
       final obsSize = ObstacleComponent.getSizeForType(type);
       final halfH = obsSize.y / 2;
-      final startPos = Vector2(curX, groundY - halfH);
 
-      final realObs = ObstacleComponent(
+      await world.add(ObstacleComponent(
         type: type,
-        startPosition: startPos,
+        startPosition: Vector2(curX, groundY - halfH),
         groundAngle: groundAngle,
-      );
-
-      await world.add(realObs);
+      ));
     }
   }
+
+  // ── Coin spawning ─────────────────────────────────────────────────────────
+
+  Future<void> _spawnCoins(Terrain tComponent) async {
+    final rand = Random(roundConfig.roundIndex * 17 + 3);
+    final totalCoins = roundConfig.totalCoins;
+    final maxX = _spawnX + roundConfig.distanceMeters;
+    final usableRange = maxX - 20.0;
+    final step = usableRange / totalCoins;
+
+    for (int i = 0; i < totalCoins; i++) {
+      final baseX = 18.0 + i * step;
+      final jitter = (rand.nextDouble() - 0.5) * step * 0.6;
+      final coinX = (baseX + jitter).clamp(18.0, usableRange);
+      if (tComponent.isInsideBridgeSpan(coinX, extraMargin: 2.0)) continue;
+
+      final groundH = tComponent.heightAt(coinX);
+      final groundY = -groundH;
+      final coinPos = Vector2(coinX, groundY - 1.0);
+
+      final coin = CoinComponent(worldPosition: coinPos);
+      coin.onCollected = () {
+        _coinsCollected++;
+        onCoinCollected?.call(_coinsCollected);
+        audio.playCoinSound();
+      };
+      await world.add(coin);
+    }
+  }
+
+  // ── Fuel canister spawning ────────────────────────────────────────────────
+
+  Future<void> _spawnFuelCanisters(Terrain tComponent) async {
+    // Place a canister every ~_fullFuelSeconds * speed meters.
+    // Car speed ≈ 12 m/s at full throttle, so place every ~35-45 m.
+    // We put the first one at 80% of a tank's range so the player
+    // gets one warning before running dry.
+    final double carApproxSpeed = 12.0; // m/s approx
+    final double fuelRange = _fullFuelSeconds * carApproxSpeed * 0.85;
+
+    double curX = _spawnX + fuelRange;
+    final maxX = _spawnX + roundConfig.distanceMeters - 10.0;
+
+    while (curX < maxX) {
+      if (!tComponent.isInsideBridgeSpan(curX, extraMargin: 4.0)) {
+        final groundH = tComponent.heightAt(curX);
+        final groundY = -groundH;
+        // Float canister 0.8m above terrain — slightly lower than coins
+        final canisterPos = Vector2(curX, groundY - 0.9);
+
+        final canister = FuelCanisterComponent(worldPosition: canisterPos);
+        canister.onCollected = () {
+          _fuel = (_fuel + 0.55).clamp(0.0, 1.0); // refill ~55%
+          onFuelChanged?.call(_fuel);
+          audio.playFuelSound();
+        };
+        await world.add(canister);
+      }
+
+      curX += fuelRange;
+    }
+  }
+
+  // ── Game loop ─────────────────────────────────────────────────────────────
 
   @override
   void onGameResize(Vector2 size) {
@@ -149,12 +237,40 @@ class GaragumRacingGame extends Forge2DGame {
     final currentTerrain = terrain;
     if (currentCar == null || currentTerrain == null) return;
 
+    // Burn fuel while driving (only when gas is applied)
+    if (!isCrashed && !_isFinished && !_outOfFuel) {
+      final throttleAbs = _throttleInput.abs();
+      if (throttleAbs > 0) {
+        _fuel -= (_fuelBurnRate / _fullFuelSeconds) * throttleAbs * dt;
+        _fuel = _fuel.clamp(0.0, 1.0);
+        onFuelChanged?.call(_fuel);
+      }
+
+      // Out of fuel check
+      if (_fuel <= 0 && !_outOfFuel) {
+        _outOfFuel = true;
+        audio.setEngineIntensity(0);
+        audio.stopEngine();
+        audio.playOutOfFuelSound();
+        car?.setThrottle(0);
+        onOutOfFuel?.call();
+      }
+    }
+
     if (!isCrashed && currentCar.checkCrashed(currentTerrain)) {
       isCrashed = true;
       audio.setEngineIntensity(0);
       audio.stopEngine();
       audio.playCrashSound();
       onCrash?.call();
+    }
+
+    // Check finish line
+    if (!_isFinished && !isCrashed && distance >= roundConfig.distanceMeters) {
+      _isFinished = true;
+      audio.setEngineIntensity(0);
+      audio.stopEngine();
+      onFinish?.call();
     }
 
     final viewfinder = camera.viewfinder;
@@ -166,9 +282,7 @@ class GaragumRacingGame extends Forge2DGame {
       final dx = viewfinder.position.x - _lastCameraPosition.x;
       final background = camera.backdrop;
       if (background is ParallaxComponent) {
-        if (background.size != size) {
-          background.size = size.clone();
-        }
+        if (background.size != size) background.size = size.clone();
         background.parallax?.baseVelocity.x = (dx / dt) * viewfinder.zoom;
       }
     }
@@ -177,7 +291,7 @@ class GaragumRacingGame extends Forge2DGame {
 
   void setThrottle(double value) {
     _throttleInput = value;
-    if (car == null || isCrashed) {
+    if (car == null || isCrashed || _isFinished || _outOfFuel) {
       car?.setThrottle(0);
       return;
     }

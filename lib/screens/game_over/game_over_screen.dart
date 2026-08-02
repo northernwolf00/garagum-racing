@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../race_screen.dart';
+import '../levels/garagum_levels_screen.dart';
 import '../menu/menu_screen.dart';
 
 class GameOverScreen extends StatefulWidget {
@@ -57,14 +57,15 @@ class _GameOverScreenState extends State<GameOverScreen>
   }
 
   void _restart() {
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const RaceScreen(),
+        pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 400),
       ),
+      (route) => false,
     );
   }
 

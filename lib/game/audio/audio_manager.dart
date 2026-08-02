@@ -35,6 +35,18 @@ class AudioManager {
     return FlameAudio.play('sfx/car-crash-sound.mp3', volume: 0.9);
   }
 
+  Future<void> playCoinSound() {
+    return FlameAudio.play('sfx/bonus-earned.mp3', volume: 0.7);
+  }
+
+  Future<void> playFuelSound() {
+    return FlameAudio.play('sfx/out_of_fuel.mp3', volume: 0.65);
+  }
+
+  Future<void> playOutOfFuelSound() {
+    return FlameAudio.play('sfx/out_of_fuel.mp3', volume: 0.9);
+  }
+
   Future<void> stopEngine() async {
     await _enginePlayer?.stop();
   }

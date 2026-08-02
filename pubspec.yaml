@@ -25,6 +25,7 @@ dependencies:
   flame_forge2d: ^0.19.2+4
   flame_audio: ^2.11.5
   vector_math: ^2.1.4
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../race_screen.dart';
+import '../../services/game_progress_service.dart';
+import '../levels/garagum_levels_screen.dart';
 import '../garage/garage_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -63,6 +64,9 @@ class _MenuScreenState extends State<MenuScreen>
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
+
+    // Ensure rounds 1 and 2 are always unlocked
+    GameProgressService.instance.init();
 
     _mapPageController = PageController(viewportFraction: 0.85);
 
@@ -143,15 +147,26 @@ class _MenuScreenState extends State<MenuScreen>
       return;
     }
 
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const RaceScreen(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
+    if (currentMap.id == 'garagum') {
+      // Open the 10-round level selection for Garagum map
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+    } else {
+      // Future maps still open race screen directly (placeholder)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bu karta heniz elýeterli däl.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _onGarage() {
