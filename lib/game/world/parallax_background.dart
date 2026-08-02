@@ -1,5 +1,6 @@
 import 'package:flame/components.dart';
 import 'package:flame/parallax.dart';
+import 'package:flutter/widgets.dart' show ImageRepeat, Alignment;
 
 /// Four-layer Garagum dune backdrop. Loaded once and set as
 /// `camera.backdrop` so it renders behind the world, unaffected by zoom.
@@ -22,6 +23,9 @@ class ParallaxBackground {
         (layer) => ParallaxLayer.load(
           ParallaxImageData(layer.$1),
           velocityMultiplier: Vector2(layer.$2, 0),
+          repeat: ImageRepeat.repeatX,
+          fill: LayerFill.height,
+          alignment: Alignment.bottomCenter,
         ),
       ),
     );

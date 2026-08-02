@@ -38,13 +38,20 @@ class Car extends Component with HasGameReference {
   static const double _bodyHeightM = 512 * _artPxToMeters;
 
   /// Driver placement inside the car_body art frame (per asset spec):
-  /// body centered at (512,170), 0.62x the body art scale, head ~28px
-  /// above the body.
+  /// body centered at (512,170), 0.62x the body art scale.
   static const double _driverScale = 0.62;
   static const double _driverBodyOffsetYM = (170 - 256) * _artPxToMeters;
-  static const double _driverHeadGapM = 28 * _artPxToMeters;
   static const double _driverBodySizeM = 320 * _artPxToMeters * _driverScale;
   static const double _driverHeadSizeM = 320 * _artPxToMeters * _driverScale;
+
+  static const double _springStiffness = 110.0;
+  static const double _springDamping = 10.0;
+
+  final Vector2 _lastChassisVelocity = Vector2.zero();
+  final Vector2 _headDisplacement = Vector2.zero();
+  final Vector2 _headVelocity = Vector2.zero();
+  double _headRotation = 0.0;
+  double _headRotVelocity = 0.0;
 
   late final Forge2DWorld _world;
   late final Body chassisBody;
@@ -77,6 +84,44 @@ class Car extends Component with HasGameReference {
 
     frontJoint = _attachWheel(chassisBody, frontWheelBody);
     rearJoint = _attachWheel(chassisBody, rearWheelBody);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _updateHeadPhysics(dt);
+  }
+
+  void _updateHeadPhysics(double dt) {
+    if (dt <= 0) return;
+
+    final currentVel = chassisBody.linearVelocity;
+    final accel = (currentVel - _lastChassisVelocity) / dt;
+    _lastChassisVelocity.setFrom(currentVel);
+
+    final chassisAngle = chassisBody.angle;
+    final cosA = math.cos(-chassisAngle);
+    final sinA = math.sin(-chassisAngle);
+    final localAccelX = accel.x * cosA - accel.y * sinA;
+    final localAccelY = accel.x * sinA + accel.y * cosA;
+
+    // G-force inertial displacement & tilt
+    final targetDispX = (-localAccelX * 0.004).clamp(-0.08, 0.08);
+    final targetDispY = (localAccelY * 0.003).clamp(-0.05, 0.05);
+    final targetRot = (-localAccelX * 0.012 - chassisBody.angularVelocity * 0.12).clamp(-0.35, 0.35);
+
+    // Spring forces toward target state
+    final springForceX = -_springStiffness * (_headDisplacement.x - targetDispX) - _springDamping * _headVelocity.x;
+    final springForceY = -_springStiffness * (_headDisplacement.y - targetDispY) - _springDamping * _headVelocity.y;
+    final springTorque = -_springStiffness * (_headRotation - targetRot) - _springDamping * _headRotVelocity;
+
+    _headVelocity.x += springForceX * dt;
+    _headVelocity.y += springForceY * dt;
+    _headRotVelocity += springTorque * dt;
+
+    _headDisplacement.x += _headVelocity.x * dt;
+    _headDisplacement.y += _headVelocity.y * dt;
+    _headRotation += _headRotVelocity * dt;
   }
 
   Body _createChassis() {
@@ -118,8 +163,6 @@ class Car extends Component with HasGameReference {
 
   /// -1 (full brake / reverse) .. 0 (idle) .. 1 (full gas)
   void setThrottle(double throttle) {
-    // Positive throttle (gas) → negative motor speed → wheels spin forward (car moves right)
-    // Negative throttle (brake) → positive motor speed → wheels spin backward (car slows/reverses)
     final speed = maxMotorSpeed * throttle;
     frontJoint.motorSpeed = speed;
     rearJoint.motorSpeed = speed;
@@ -134,13 +177,14 @@ class Car extends Component with HasGameReference {
   /// Checks if the driver's head hit the ground or chassis flipped upside down near ground.
   bool checkCrashed(Terrain terrain) {
     final angle = chassisBody.angle;
-    // Driver head offset in local chassis coordinates (-Y is UP in local space)
-    final headOffset = Vector2(0, -0.65)..rotate(angle);
-    final headPos = chassisBody.position + headOffset;
+    final restingHeadY = _driverBodyOffsetYM - _driverBodySizeM * 0.26;
+    final localHead = Vector2(_headDisplacement.x, restingHeadY + _headDisplacement.y)
+      ..rotate(angle);
+    final headPos = chassisBody.position + localHead;
 
     final headGroundY = -terrain.heightAt(headPos.x);
 
-    // Head touching or below ground level (Y increases downwards in Flame Forge2D)
+    // Head touching or below ground level
     if (headPos.y >= headGroundY - 0.15) {
       return true;
     }
@@ -148,7 +192,7 @@ class Car extends Component with HasGameReference {
     // Chassis inverted (angle > ~110 degrees) and close to ground level
     final chassisGroundY = -terrain.heightAt(chassisBody.position.x);
     final isUpsideDown = math.cos(angle) < -0.3;
-    if (isUpsideDown && chassisBody.position.y >= chassisGroundY - 0.6) {
+    if (isUpsideDown && chassisBody.position.y >= chassisGroundY - 0.5) {
       return true;
     }
 
@@ -180,6 +224,7 @@ class Car extends Component with HasGameReference {
     canvas.save();
     canvas.translate(chassisBody.position.x, chassisBody.position.y);
     canvas.rotate(chassisBody.angle);
+    canvas.scale(-1, 1);
     _bodySprite.render(
       canvas,
       anchor: Anchor.center,
@@ -192,6 +237,7 @@ class Car extends Component with HasGameReference {
     canvas.save();
     canvas.translate(chassisBody.position.x, chassisBody.position.y);
     canvas.rotate(chassisBody.angle);
+    canvas.scale(-1, 1);
 
     _driverBodySprite.render(
       canvas,
@@ -200,17 +246,24 @@ class Car extends Component with HasGameReference {
       size: Vector2.all(_driverBodySizeM),
     );
 
-    final headY = _driverBodyOffsetYM -
-        _driverBodySizeM / 2 -
-        _driverHeadGapM -
-        _driverHeadSizeM / 2;
+    final restingHeadY = _driverBodyOffsetYM - _driverBodySizeM * 0.26;
+    final headPos = Vector2(
+      _headDisplacement.x,
+      restingHeadY + _headDisplacement.y,
+    );
+
+    canvas.save();
+    canvas.translate(headPos.x, headPos.y);
+    canvas.rotate(_headRotation);
+    canvas.scale(-1, 1);
+
     _driverHeadSprite.render(
       canvas,
-      position: Vector2(0, headY),
       anchor: Anchor.center,
       size: Vector2.all(_driverHeadSizeM),
     );
 
+    canvas.restore();
     canvas.restore();
   }
 }

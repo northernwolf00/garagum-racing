@@ -5,30 +5,44 @@ import 'package:flame/flame.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:vector_math/vector_math_64.dart' show Matrix4;
 
-/// Procedural sand-dune ground built from a chain of static line segments.
-///
-/// The height function combines a few sine waves at different frequencies,
-/// which gives the same rolling-dune silhouette as the reference art
-/// without needing hand-authored terrain data yet. Collision uses the
-/// invisible [ChainShape] fixture; the visible surface is drawn separately
-/// with the `terrain_fill`/`terrain_top` textures tiled along the same
-/// point list.
+/// Struct representing a bridge span along the x-axis.
+class BridgeSpan {
+  const BridgeSpan({
+    required this.startX,
+    required this.endX,
+  });
+
+  final double startX;
+  final double endX;
+
+  double get width => endX - startX;
+}
+
+/// Procedural sand-dune ground built from a chain of static line segments,
+/// incorporating periodic canal dips where bridges span across.
 class Terrain extends BodyComponent {
   Terrain({
-    this.segmentWidth = 2.0,
-    this.segmentCount = 400,
-  }) : super(renderBody: false);
+    this.segmentWidth = 0.35,
+    this.segmentCount = 3000,
+  }) : super(renderBody: false) {
+    _generateBridgeSpans();
+  }
 
   final double segmentWidth;
   final int segmentCount;
 
+  static const double canalDepth = 6.5;
+  static const double canalBankMargin = 3.5;
+
+  /// List of procedurally generated bridge spans.
+  final List<BridgeSpan> bridgeSpans = [];
+
   /// How many meters of world-space one tile of each texture covers.
   static const double _fillTileMeters = 6.0;
-  static const double _topStripHeightMeters = 1.0;
+  static const double _topStripHeightMeters = 0.8;
 
-  /// How far below the lowest ground point the fill texture extends, so it
-  /// still covers the screen when the camera looks at a dip in the dunes.
-  static const double _fillDepthMeters = 40.0;
+  /// How far below the lowest ground point the fill texture extends.
+  static const double _fillDepthMeters = 60.0;
 
   late final List<Vector2> groundPoints;
   late final ui.Path _fillPath;
@@ -36,11 +50,75 @@ class Terrain extends BodyComponent {
   late final ui.Paint _fillPaint;
   late final ui.Paint _topPaint;
 
-  double heightAt(double x) {
+  void _generateBridgeSpans() {
+    // Generate bridges every ~180-220 meters starting after x = 120m
+    double curX = 130.0;
+    final maxWorldX = segmentCount * segmentWidth;
+
+    while (curX < maxWorldX - 40.0) {
+      final spanWidth = 22.0;
+      bridgeSpans.add(BridgeSpan(startX: curX, endX: curX + spanWidth));
+      curX += 190.0;
+    }
+  }
+
+  double baseHeightAt(double x) {
     return sin(x * 0.09) * 3.0 +
         sin(x * 0.03) * 6.0 +
         sin(x * 0.005 + 1.7) * 2.5 +
         6.0;
+  }
+
+  /// Returns the elevation (height) of the ground surface at x.
+  /// Higher return value means higher ground level (world Y = -heightAt(x)).
+  double heightAt(double x) {
+    final baseH = baseHeightAt(x);
+
+    for (final span in bridgeSpans) {
+      final bStart = span.startX;
+      final bEnd = span.endX;
+
+      if (x >= bStart - canalBankMargin && x <= bEnd + canalBankMargin) {
+        // Target canal bottom height
+        final bridgeDeckH = baseHeightAt(bStart);
+        final canalBedH = bridgeDeckH - canalDepth;
+
+        if (x >= bStart && x <= bEnd) {
+          return canalBedH;
+        } else if (x < bStart) {
+          // Left bank slope down
+          final t = (x - (bStart - canalBankMargin)) / canalBankMargin;
+          final smoothT = (1 - cos(t * pi)) / 2;
+          return baseH + (canalBedH - baseH) * smoothT;
+        } else {
+          // Right bank slope up
+          final t = (x - bEnd) / canalBankMargin;
+          final smoothT = (1 - cos(t * pi)) / 2;
+          return canalBedH + (baseH - canalBedH) * smoothT;
+        }
+      }
+    }
+
+    return baseH;
+  }
+
+  /// Checks if x falls within any bridge deck span or its canal embankment.
+  bool isInsideBridgeSpan(double x, {double extraMargin = 2.0}) {
+    for (final span in bridgeSpans) {
+      if (x >= span.startX - extraMargin && x <= span.endX + extraMargin) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Computes ground slope angle (radians) at position x.
+  double getGroundAngle(double x) {
+    final dx = 0.4;
+    final h1 = heightAt(x - dx);
+    final h2 = heightAt(x + dx);
+    // Note: Y in world space is -height, so dy = -(h2 - h1)
+    return atan2(-(h2 - h1), dx * 2);
   }
 
   @override

@@ -6,12 +6,13 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 
 import 'audio/audio_manager.dart';
 import 'components/car.dart';
+import 'components/obstacle.dart';
+import 'world/bridge.dart';
 import 'world/parallax_background.dart';
 import 'world/terrain.dart';
 
-/// Forge2D world with procedural dune terrain, a physics-driven car, a
-/// parallax dune backdrop and an engine-sound loop. Fuel, coins, run-over
-/// conditions and menus still belong to a later phase.
+/// Forge2D world with procedural dune terrain, bridges, road obstacles,
+/// a physics-driven car, a parallax dune backdrop and an engine-sound loop.
 class GaragumRacingGame extends Forge2DGame {
   GaragumRacingGame() : super(gravity: Vector2(0, 22), zoom: 28);
 
@@ -20,9 +21,7 @@ class GaragumRacingGame extends Forge2DGame {
   /// How quickly the camera closes the gap to the car; higher = snappier.
   static const double _cameraFollowRate = 6;
 
-  /// How far above the terrain surface the car spawns, so it always starts
-  /// clear of the ground and falls onto it instead of starting embedded in
-  /// (and possibly tunnelling through) the chain-shape collider.
+  /// How far above the terrain surface the car spawns.
   static const double _spawnClearance = 3;
   static const double _spawnX = 6;
 
@@ -52,6 +51,22 @@ class GaragumRacingGame extends Forge2DGame {
     await world.add(tComponent);
     terrain = tComponent;
 
+    // Add Canal Bridges along the route
+    for (final bridgeSpan in tComponent.bridgeSpans) {
+      final deckY = -tComponent.baseHeightAt(bridgeSpan.startX);
+      final canalBottomY = deckY + Terrain.canalDepth;
+      final bridgeComp = BridgeComponent(
+        startX: bridgeSpan.startX,
+        endX: bridgeSpan.endX,
+        deckY: deckY,
+        canalBottomY: canalBottomY,
+      );
+      await world.add(bridgeComp);
+    }
+
+    // Add Road Obstacles (Sazak, Daş / Rocks, Sand mounds, Tire stacks, etc.)
+    await _spawnRoadObstacles(tComponent);
+
     final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
     final cComponent = Car(startPosition: Vector2(_spawnX, spawnY));
     await world.add(cComponent);
@@ -62,6 +77,68 @@ class GaragumRacingGame extends Forge2DGame {
     _lastCameraPosition.setFrom(camera.viewfinder.position);
 
     await audio.init();
+  }
+
+  Future<void> _spawnRoadObstacles(Terrain tComponent) async {
+    final rand = Random(42);
+    double curX = 15.0;
+    final maxX = tComponent.segmentCount * tComponent.segmentWidth - 35.0;
+
+    final obstacleTypes = [
+      ObstacleType.sazak,
+      ObstacleType.rockSmall,
+      ObstacleType.rockBig,
+      ObstacleType.sazak,
+      ObstacleType.sandRamp,
+      ObstacleType.rockSmall,
+      ObstacleType.tyreStack,
+      ObstacleType.barrel,
+      ObstacleType.crate,
+      ObstacleType.sazak,
+      ObstacleType.sandMound,
+      ObstacleType.rockBig,
+      ObstacleType.signpost,
+    ];
+
+    int obsIdx = 0;
+
+    while (curX < maxX) {
+      final step = 10.0 + rand.nextDouble() * 8.0;
+      curX += step;
+
+      // Do not spawn obstacles inside bridge canal spans or ramps
+      if (tComponent.isInsideBridgeSpan(curX, extraMargin: 5.0)) {
+        continue;
+      }
+
+      final type = obstacleTypes[obsIdx % obstacleTypes.length];
+      obsIdx++;
+
+      final groundH = tComponent.heightAt(curX);
+      final groundY = -groundH;
+      final groundAngle = tComponent.getGroundAngle(curX);
+
+      final obsSize = ObstacleComponent.getSizeForType(type);
+      final halfH = obsSize.y / 2;
+      final startPos = Vector2(curX, groundY - halfH);
+
+      final realObs = ObstacleComponent(
+        type: type,
+        startPosition: startPos,
+        groundAngle: groundAngle,
+      );
+
+      await world.add(realObs);
+    }
+  }
+
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    final background = camera.backdrop;
+    if (background is ParallaxComponent) {
+      background.size = size.clone();
+    }
   }
 
   @override
@@ -89,6 +166,9 @@ class GaragumRacingGame extends Forge2DGame {
       final dx = viewfinder.position.x - _lastCameraPosition.x;
       final background = camera.backdrop;
       if (background is ParallaxComponent) {
+        if (background.size != size) {
+          background.size = size.clone();
+        }
         background.parallax?.baseVelocity.x = (dx / dt) * viewfinder.zoom;
       }
     }
