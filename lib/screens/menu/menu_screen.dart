@@ -1,3 +1,4 @@
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -25,6 +26,8 @@ class _MenuScreenState extends State<MenuScreen>
 
   late final PageController _mapPageController;
   int _selectedMapIndex = 0;
+  int _totalCoins = 0;
+  bool _soundOn = true;
 
   final List<_MapItem> _maps = const [
     _MapItem(
@@ -65,8 +68,7 @@ class _MenuScreenState extends State<MenuScreen>
       DeviceOrientation.portraitDown,
     ]);
 
-    // Ensure rounds 1 and 2 are always unlocked
-    GameProgressService.instance.init();
+    _totalCoins = GameProgressService.instance.getTotalCoins();
 
     _mapPageController = PageController(viewportFraction: 0.85);
 
@@ -99,15 +101,36 @@ class _MenuScreenState extends State<MenuScreen>
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _buttonsController.forward();
     });
+
+    _startMenuMusic();
   }
 
   @override
   void dispose() {
+    // Menu theme is scoped to this screen only — stop it (not dispose the
+    // shared FlameAudio.bgm player) so it doesn't keep playing underneath
+    // the levels/garage/race screens.
+    FlameAudio.bgm.stop();
     _titleController.dispose();
     _duneController.dispose();
     _buttonsController.dispose();
     _mapPageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _startMenuMusic() async {
+    if (!_soundOn) return;
+    await FlameAudio.bgm.initialize();
+    await FlameAudio.bgm.play('music/menu_theme.mp3', volume: 0.45);
+  }
+
+  void _toggleSound() {
+    setState(() => _soundOn = !_soundOn);
+    if (_soundOn) {
+      _startMenuMusic();
+    } else {
+      FlameAudio.bgm.stop();
+    }
   }
 
   void _showLockedMessage() {
@@ -149,6 +172,7 @@ class _MenuScreenState extends State<MenuScreen>
 
     if (currentMap.id == 'garagum') {
       // Open the 10-round level selection for Garagum map
+      FlameAudio.bgm.pause();
       Navigator.of(context).push(
         PageRouteBuilder(
           pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
@@ -157,7 +181,9 @@ class _MenuScreenState extends State<MenuScreen>
           },
           transitionDuration: const Duration(milliseconds: 400),
         ),
-      );
+      ).then((_) {
+        if (mounted && _soundOn) FlameAudio.bgm.resume();
+      });
     } else {
       // Future maps still open race screen directly (placeholder)
       ScaffoldMessenger.of(context).showSnackBar(
@@ -170,6 +196,7 @@ class _MenuScreenState extends State<MenuScreen>
   }
 
   void _onGarage() {
+    FlameAudio.bgm.pause();
     Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => const GarageScreen(),
@@ -184,7 +211,9 @@ class _MenuScreenState extends State<MenuScreen>
         },
         transitionDuration: const Duration(milliseconds: 350),
       ),
-    );
+    ).then((_) {
+      if (mounted && _soundOn) FlameAudio.bgm.resume();
+    });
   }
 
   void _onSettings() {
@@ -256,11 +285,13 @@ class _MenuScreenState extends State<MenuScreen>
                   child: Row(
                     children: [
                       const Spacer(),
-                      const _CoinBadge(coins: 0),
+                      _CoinBadge(coins: _totalCoins),
                       const SizedBox(width: 8),
                       _IconBtn(
-                        assetPath: 'assets/images/ui/icon_sound_on.png',
-                        onTap: () {},
+                        assetPath: _soundOn
+                            ? 'assets/images/ui/icon_sound_on.png'
+                            : 'assets/images/ui/icon_sound_off.png',
+                        onTap: _toggleSound,
                       ),
                     ],
                   ),

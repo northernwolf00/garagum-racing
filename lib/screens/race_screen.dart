@@ -31,6 +31,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   bool _finished = false;
   bool _outOfFuel = false;
   bool _roundSaved = false;
+  bool _coinsSaved = false;
+
+  /// Guards _restart/_goToMenu/_goToLevels against being triggered more
+  /// than once. Without this, mashing an overlay button (e.g. "restart"
+  /// right after a crash) fires several overlapping Navigator transitions,
+  /// each spinning up its own GaragumRacingGame — and their unordered,
+  /// un-awaited SystemChrome.setPreferredOrientations() calls can resolve
+  /// out of order, leaving the app stuck in landscape after backing out to
+  /// the menu. It also avoids briefly rendering several heavy game
+  /// instances at once, which is the likely cause of the blank/white
+  /// screen after rapid repeated taps.
+  bool _isNavigatingAway = false;
 
   // HUD animation
   late final AnimationController _hudCtrl;
@@ -51,6 +63,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _game.onCrash = _onCarCrashed;
     _game.onFinish = _onRoundFinished;
     _game.onOutOfFuel = () {
+      _saveCoins();
       // Use addPostFrameCallback so setState fires after the current build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _outOfFuel = true);
@@ -83,6 +96,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _onCarCrashed() {
+    _saveCoins();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _crashed = true);
     });
@@ -97,14 +111,25 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _saveProgress() async {
-    final collected = _game.coinNotifier.value;
-    final progress = GameProgressService.instance;
-    await progress.addCoins(collected);
+  /// Persists whatever coins were collected this run to the player's total,
+  /// no matter how the run ends. Every coin/crash/fuel path (crash, out of
+  /// fuel, or a genuine finish) calls this exactly once via [_coinsSaved] —
+  /// previously only a full finish saved coins, so a crash or running out
+  /// of fuel silently discarded every coin collected that run.
+  Future<void> _saveCoins() async {
+    if (_coinsSaved) return;
+    _coinsSaved = true;
+    await GameProgressService.instance.addCoins(_game.coinNotifier.value);
+  }
 
-    // Only mark as completed if the player collected enough coins
+  /// Only reaching the actual finish line can mark a round completed and
+  /// unlock the next one — matching [_round.requiredCoins] alone is not
+  /// enough, the player still has to finish the road.
+  Future<void> _saveProgress() async {
+    await _saveCoins();
+    final collected = _game.coinNotifier.value;
     if (collected >= _round.requiredCoins) {
-      await progress.completeRound(_round.roundIndex);
+      await GameProgressService.instance.completeRound(_round.roundIndex);
     }
   }
 
@@ -118,6 +143,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _goToMenu() {
+    if (_isNavigatingAway) return;
+    _isNavigatingAway = true;
     _game.pauseEngine();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -135,6 +162,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _goToLevels() {
+    if (_isNavigatingAway) return;
+    _isNavigatingAway = true;
     _game.pauseEngine();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -152,6 +181,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _restart() {
+    if (_isNavigatingAway) return;
+    _isNavigatingAway = true;
+    _game.pauseEngine();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
