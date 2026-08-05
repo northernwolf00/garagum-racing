@@ -16,9 +16,27 @@ import '../world/terrain.dart';
 /// bodies directly against the [Forge2DWorld] and draws sprites anchored to
 /// each body's own transform every frame.
 class Car extends Component with HasGameReference {
-  Car({required Vector2 startPosition}) : _startPosition = startPosition;
+  Car({
+    required Vector2 startPosition,
+    this.bodyAsset = 'vehicles/car_body.png',
+    this.wheelAsset = 'vehicles/car_wheel.png',
+    this.showDriver = true,
+  }) : _startPosition = startPosition;
 
   final Vector2 _startPosition;
+
+  /// Body/wheel sprite paths. Both the Garagum buggy and Aşgabat's "ak
+  /// ulag" city car share the same 1024x512 wheel-arch rig (arches at
+  /// x=252/772, y=400, radius ≈110px) per the art pack notes, so swapping
+  /// these two paths is enough to reskin the car — no rig math changes.
+  final String bodyAsset;
+  final String wheelAsset;
+
+  /// Whether to load/render the seated driver sprites. The Aşgabat "ak
+  /// ulag" city car has no driver art of its own, so it's driven with this
+  /// off. The head-based crash detection still uses a virtual head point
+  /// at the same rig offset either way — this only affects rendering.
+  final bool showDriver;
 
   static const double chassisHalfWidth = 1.5;
   static const double chassisHalfHeight = 0.35;
@@ -62,17 +80,19 @@ class Car extends Component with HasGameReference {
 
   late final Sprite _bodySprite;
   late final Sprite _wheelSprite;
-  late final Sprite _driverBodySprite;
-  late final Sprite _driverHeadSprite;
+  Sprite? _driverBodySprite;
+  Sprite? _driverHeadSprite;
 
   @override
   Future<void> onLoad() async {
     _world = game.world as Forge2DWorld;
 
-    _bodySprite = await Sprite.load('vehicles/car_body.png');
-    _wheelSprite = await Sprite.load('vehicles/car_wheel.png');
-    _driverBodySprite = await Sprite.load('vehicles/driver_body.png');
-    _driverHeadSprite = await Sprite.load('vehicles/driver_head.png');
+    _bodySprite = await Sprite.load(bodyAsset);
+    _wheelSprite = await Sprite.load(wheelAsset);
+    if (showDriver) {
+      _driverBodySprite = await Sprite.load('vehicles/driver_body.png');
+      _driverHeadSprite = await Sprite.load('vehicles/driver_head.png');
+    }
 
     chassisBody = _createChassis();
     frontWheelBody = _createWheel(
@@ -262,7 +282,7 @@ class Car extends Component with HasGameReference {
     _renderWheel(canvas, rearWheelBody);
     _renderWheel(canvas, frontWheelBody);
     _renderBody(canvas);
-    _renderDriver(canvas);
+    if (showDriver) _renderDriver(canvas);
   }
 
   void _renderWheel(Canvas canvas, Body body) {
@@ -296,7 +316,7 @@ class Car extends Component with HasGameReference {
     canvas.rotate(chassisBody.angle);
     canvas.scale(-1, 1);
 
-    _driverBodySprite.render(
+    _driverBodySprite!.render(
       canvas,
       position: Vector2(0, _driverBodyOffsetYM),
       anchor: Anchor.center,
@@ -314,7 +334,7 @@ class Car extends Component with HasGameReference {
     canvas.rotate(_headRotation);
     canvas.scale(-1, 1);
 
-    _driverHeadSprite.render(
+    _driverHeadSprite!.render(
       canvas,
       anchor: Anchor.center,
       size: Vector2.all(_driverHeadSizeM),

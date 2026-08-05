@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/game_progress_service.dart';
+import '../levels/ashgabat_levels_screen.dart';
 import '../levels/garagum_levels_screen.dart';
 import '../garage/garage_screen.dart';
 
@@ -38,6 +39,15 @@ class _MenuScreenState extends State<MenuScreen>
       isUnlocked: true,
       badgeText: 'AÇYK',
       gradientColors: [Color(0xFFE8A33D), Color(0xFF8B4A1A)],
+    ),
+    _MapItem(
+      id: 'ashgabat',
+      title: 'Aşgabat',
+      subtitle: 'Ak mermer köçeler hem belent binalar',
+      assetPath: '',
+      isUnlocked: true,
+      badgeText: 'AÇYK',
+      gradientColors: [Color(0xFF79BEE4), Color(0xFF2C6B8A)],
     ),
     _MapItem(
       id: 'yannykala',
@@ -170,12 +180,14 @@ class _MenuScreenState extends State<MenuScreen>
       return;
     }
 
-    if (currentMap.id == 'garagum') {
-      // Open the 10-round level selection for Garagum map
+    if (currentMap.id == 'garagum' || currentMap.id == 'ashgabat') {
+      // Open the round-selection grid for whichever unlocked map was picked
       FlameAudio.bgm.pause();
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
+          pageBuilder: (_, animation, __) => currentMap.id == 'garagum'
+              ? const GaragumLevelsScreen()
+              : const AshgabatLevelsScreen(),
           transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(opacity: animation, child: child);
           },

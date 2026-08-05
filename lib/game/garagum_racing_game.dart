@@ -5,12 +5,14 @@ import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/map_theme.dart';
 import '../models/round_config.dart';
 import 'audio/audio_manager.dart';
 import 'components/car.dart';
 import 'components/coin.dart';
 import 'components/fuel_canister.dart';
 import 'components/obstacle.dart';
+import 'world/ashgabat_decor.dart';
 import 'world/bridge.dart';
 import 'world/desert_decor.dart';
 import 'world/parallax_background.dart';
@@ -24,6 +26,8 @@ class GaragumRacingGame extends Forge2DGame {
       : super(gravity: Vector2(0, 22), zoom: 28);
 
   final RoundConfig roundConfig;
+
+  MapTheme get theme => roundConfig.theme;
 
   static const Color _skyColor = Color(0xFFFCE2A6);
   static const double _cameraFollowRate = 6;
@@ -83,13 +87,14 @@ class GaragumRacingGame extends Forge2DGame {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    camera.backdrop = await ParallaxBackground.load(size);
+    camera.backdrop = await ParallaxBackground.load(size, theme: theme);
 
-    final tComponent = Terrain(roundConfig: roundConfig);
+    final tComponent = Terrain(roundConfig: roundConfig, theme: theme);
     await world.add(tComponent);
     terrain = tComponent;
 
-    // Add Canal Bridges along the route
+    // Add Canal Bridges along the route (Garagum only — Terrain generates
+    // no bridge spans at all for the Aşgabat theme, so this loop no-ops).
     for (final bridgeSpan in tComponent.bridgeSpans) {
       if (bridgeSpan.startX > roundConfig.distanceMeters + _spawnX) break;
       final deckY = -tComponent.baseHeightAt(bridgeSpan.startX);
@@ -102,13 +107,23 @@ class GaragumRacingGame extends Forge2DGame {
       ));
     }
 
-    // Add sparse desert scenery (camels, yurts) along the dunes
-    await world.add(
-      DesertDecorComponent(
-        terrain: tComponent,
-        seed: roundConfig.roundIndex * 71 + 11,
-      ),
-    );
+    // Add sparse roadside scenery (desert camels/yurts, or Aşgabat
+    // buildings/street furniture) along the route
+    if (theme == MapTheme.ashgabat) {
+      await world.add(
+        AshgabatDecorComponent(
+          terrain: tComponent,
+          seed: roundConfig.roundIndex * 71 + 11,
+        ),
+      );
+    } else {
+      await world.add(
+        DesertDecorComponent(
+          terrain: tComponent,
+          seed: roundConfig.roundIndex * 71 + 11,
+        ),
+      );
+    }
 
     // Add road obstacles
     await _spawnRoadObstacles(tComponent);
@@ -120,7 +135,14 @@ class GaragumRacingGame extends Forge2DGame {
     await _spawnFuelCanisters(tComponent);
 
     final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
-    final cComponent = Car(startPosition: Vector2(_spawnX, spawnY));
+    final cComponent = theme == MapTheme.ashgabat
+        ? Car(
+            startPosition: Vector2(_spawnX, spawnY),
+            bodyAsset: 'images_ashgabat/vehicles/ak_ulag_body.png',
+            wheelAsset: 'images_ashgabat/vehicles/ak_ulag_wheel.png',
+            showDriver: false,
+          )
+        : Car(startPosition: Vector2(_spawnX, spawnY));
     await world.add(cComponent);
     car = cComponent;
 
@@ -140,21 +162,37 @@ class GaragumRacingGame extends Forge2DGame {
     final baseStep = 10.0;
     final stepDivisor = roundConfig.obstacleFrequency;
 
-    final obstacleTypes = [
-      ObstacleType.sazak,
-      ObstacleType.rockSmall,
-      ObstacleType.rockBig,
-      ObstacleType.sazak,
-      ObstacleType.sandRamp,
-      ObstacleType.rockSmall,
-      ObstacleType.tyreStack,
-      ObstacleType.barrel,
-      ObstacleType.crate,
-      ObstacleType.sazak,
-      ObstacleType.sandMound,
-      ObstacleType.rockBig,
-      ObstacleType.signpost,
-    ];
+    final obstacleTypes = theme == MapTheme.ashgabat
+        ? const [
+            ObstacleType.trafficCone,
+            ObstacleType.pothole,
+            ObstacleType.barrier,
+            ObstacleType.trafficCone,
+            ObstacleType.metalRamp,
+            ObstacleType.pothole,
+            ObstacleType.trashBin,
+            ObstacleType.concreteBlock,
+            ObstacleType.constructionSign,
+            ObstacleType.trafficCone,
+            ObstacleType.speedBump,
+            ObstacleType.barrier,
+            ObstacleType.trashBin,
+          ]
+        : const [
+            ObstacleType.sazak,
+            ObstacleType.rockSmall,
+            ObstacleType.rockBig,
+            ObstacleType.sazak,
+            ObstacleType.sandRamp,
+            ObstacleType.rockSmall,
+            ObstacleType.tyreStack,
+            ObstacleType.barrel,
+            ObstacleType.crate,
+            ObstacleType.sazak,
+            ObstacleType.sandMound,
+            ObstacleType.rockBig,
+            ObstacleType.signpost,
+          ];
     int obsIdx = roundConfig.roundIndex;
 
     while (curX < maxX) {

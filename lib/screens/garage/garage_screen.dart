@@ -46,6 +46,16 @@ class _GarageScreenState extends State<GarageScreen>
       unlocked: false,
       unlockCost: 12000,
     ),
+    _VehicleData(
+      name: 'Ak ulag',
+      assetPath: 'assets/images/images_ashgabat/vehicles/ak_ulag_body.png',
+      engine: 0.6,
+      suspension: 0.5,
+      tires: 0.55,
+      fuel: 0.6,
+      unlocked: true,
+      unlockCost: 0,
+    ),
   ];
 
   @override

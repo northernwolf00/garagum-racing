@@ -5,6 +5,7 @@ import 'package:flame/flame.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:vector_math/vector_math_64.dart' show Matrix4;
 
+import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
 
 /// Struct representing a bridge span along the x-axis.
@@ -26,15 +27,19 @@ class Terrain extends BodyComponent {
   Terrain({
     this.segmentWidth = 0.35,
     RoundConfig? roundConfig,
+    this.theme = MapTheme.garagum,
   })  : segmentCount = roundConfig != null
             ? ((roundConfig.distanceMeters + 60.0) / 0.35).ceil().clamp(500, 8000)
             : 3000,
         super(renderBody: false) {
-    _generateBridgeSpans();
+    // Ashgabat is a paved city street — no canals/bridges, so its span
+    // list stays empty and every bridge-spawn loop naturally no-ops.
+    if (theme == MapTheme.garagum) _generateBridgeSpans();
   }
 
   final double segmentWidth;
   final int segmentCount;
+  final MapTheme theme;
 
   static const double canalDepth = 6.5;
 
@@ -67,6 +72,10 @@ class Terrain extends BodyComponent {
   }
 
   double baseHeightAt(double x) {
+    if (theme == MapTheme.ashgabat) {
+      // Flat paved street — gentle rolling only, no dune-scale relief.
+      return sin(x * 0.04) * 0.35 + sin(x * 0.011 + 0.6) * 0.5 + 4.0;
+    }
     return sin(x * 0.09) * 3.0 +
         sin(x * 0.03) * 6.0 +
         sin(x * 0.005 + 1.7) * 2.5 +
@@ -168,8 +177,15 @@ class Terrain extends BodyComponent {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    final fillImg = await Flame.images.load('terrain/terrain_fill.png');
-    final topImg = await Flame.images.load('terrain/terrain_top.png');
+    final fillPath = theme == MapTheme.ashgabat
+        ? 'images_ashgabat/terrain/asphalt_fill.png'
+        : 'terrain/terrain_fill.png';
+    final topPath = theme == MapTheme.ashgabat
+        ? 'images_ashgabat/terrain/asphalt_top.png'
+        : 'terrain/terrain_top.png';
+
+    final fillImg = await Flame.images.load(fillPath);
+    final topImg = await Flame.images.load(topPath);
 
     final fillScale = _fillTileMeters / fillImg.width;
     _fillPaint = ui.Paint()

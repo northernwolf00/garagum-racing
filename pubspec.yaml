@@ -50,6 +50,12 @@ flutter:
     - assets/images/obstacles/
     - assets/images/ui/
     - assets/images/fx/
+    - assets/images/images_ashgabat/buildings/
+    - assets/images/images_ashgabat/deco/
+    - assets/images/images_ashgabat/obstacles/
+    - assets/images/images_ashgabat/parallax/
+    - assets/images/images_ashgabat/terrain/
+    - assets/images/images_ashgabat/vehicles/
     - assets/audio/music/
     - assets/audio/sfx/
 

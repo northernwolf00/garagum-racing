@@ -129,7 +129,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     await _saveCoins();
     final collected = _game.coinNotifier.value;
     if (collected >= _round.requiredCoins) {
-      await GameProgressService.instance.completeRound(_round.roundIndex);
+      await GameProgressService.instance.completeRound(
+        _round.theme,
+        _round.roundIndex,
+      );
     }
   }
 
@@ -257,7 +260,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                       children: [
                         _PauseButton(onTap: _togglePause),
                         const SizedBox(height: 6),
-                        _RoundLabel(roundIndex: _round.roundIndex),
+                        _RoundLabel(
+                          roundIndex: _round.roundIndex,
+                          totalRounds: RoundConfig.totalRoundsFor(_round.theme),
+                        ),
                       ],
                     ),
                   ),
@@ -357,8 +363,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
 // ─── Round Label ──────────────────────────────────────────────────────────────
 
 class _RoundLabel extends StatelessWidget {
-  const _RoundLabel({required this.roundIndex});
+  const _RoundLabel({required this.roundIndex, required this.totalRounds});
   final int roundIndex;
+  final int totalRounds;
 
   @override
   Widget build(BuildContext context) {
@@ -370,7 +377,7 @@ class _RoundLabel extends StatelessWidget {
         border: Border.all(color: Colors.white30, width: 1),
       ),
       child: Text(
-        'TUR $roundIndex / 10',
+        'TUR $roundIndex / $totalRounds',
         style: const TextStyle(
           color: Color(0xFFFFD98C),
           fontSize: 12,
@@ -1119,7 +1126,8 @@ class _FinishOverlayState extends State<_FinishOverlay>
   @override
   Widget build(BuildContext context) {
     final passed = widget.coinsCollected >= widget.round.requiredCoins;
-    final nextUnlocked = passed && widget.round.roundIndex < 10;
+    final nextUnlocked = passed &&
+        widget.round.roundIndex < RoundConfig.totalRoundsFor(widget.round.theme);
 
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
