@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../models/vehicle_config.dart';
+import '../../services/game_progress_service.dart';
+
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
 
@@ -14,58 +17,17 @@ class _GarageScreenState extends State<GarageScreen>
   late final Animation<Offset> _slide;
 
   int _selectedVehicle = 0;
-
-  final List<_VehicleData> _vehicles = const [
-    _VehicleData(
-      name: 'Buggy',
-      assetPath: 'assets/images/vehicles/car_body.png',
-      wheelAssetPath: 'assets/images/vehicles/car_wheel.png',
-      engine: 0.35,
-      suspension: 0.4,
-      tires: 0.5,
-      fuel: 0.45,
-      unlocked: true,
-      unlockCost: 0,
-    ),
-    _VehicleData(
-      name: 'UAZ',
-      assetPath: 'assets/images/vehicles/car_body.png',
-      wheelAssetPath: 'assets/images/vehicles/car_wheel.png',
-      engine: 0.55,
-      suspension: 0.6,
-      tires: 0.5,
-      fuel: 0.65,
-      unlocked: false,
-      unlockCost: 5000,
-    ),
-    _VehicleData(
-      name: 'Pikap',
-      assetPath: 'assets/images/vehicles/car_body.png',
-      wheelAssetPath: 'assets/images/vehicles/car_wheel.png',
-      engine: 0.7,
-      suspension: 0.65,
-      tires: 0.75,
-      fuel: 0.7,
-      unlocked: false,
-      unlockCost: 12000,
-    ),
-    _VehicleData(
-      name: 'Ak ulag',
-      assetPath: 'assets/images/images_ashgabat/vehicles/ak_ulag_body.png',
-      wheelAssetPath:
-          'assets/images/images_ashgabat/vehicles/ak_ulag_wheel.png',
-      engine: 0.6,
-      suspension: 0.5,
-      tires: 0.55,
-      fuel: 0.6,
-      unlocked: true,
-      unlockCost: 0,
-    ),
-  ];
+  final List<VehicleConfig> _vehicles = VehicleConfig.allVehicles;
 
   @override
   void initState() {
     super.initState();
+    final savedId = GameProgressService.instance.getSelectedVehicle();
+    final idx = _vehicles.indexWhere((v) => v.id == savedId);
+    if (idx >= 0) {
+      _selectedVehicle = idx;
+    }
+
     _entryController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -165,7 +127,11 @@ class _GarageScreenState extends State<GarageScreen>
                           final v = _vehicles[i];
                           final selected = i == _selectedVehicle;
                           return GestureDetector(
-                            onTap: () => setState(() => _selectedVehicle = i),
+                            onTap: () async {
+                              setState(() => _selectedVehicle = i);
+                              await GameProgressService.instance
+                                  .setSelectedVehicle(_vehicles[i].id);
+                            },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.symmetric(
@@ -252,8 +218,8 @@ class _GarageScreenState extends State<GarageScreen>
                             Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: _VehiclePreview(
-                                bodyAsset: vehicle.assetPath,
-                                wheelAsset: vehicle.wheelAssetPath,
+                                bodyAsset: vehicle.fullBodyAsset,
+                                wheelAsset: vehicle.fullWheelAsset,
                                 width: 280,
                               ),
                             ),
@@ -372,10 +338,16 @@ class _GarageScreenState extends State<GarageScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: vehicle.unlocked
                           ? _ActionButton(
-                              label: 'OÝNA',
-                              icon: Icons.play_arrow_rounded,
+                              label: 'SAÝLA WE OÝNA',
+                              icon: Icons.check_circle_rounded,
                               primary: true,
-                              onTap: () => Navigator.of(context).pop(),
+                              onTap: () async {
+                                await GameProgressService.instance
+                                    .setSelectedVehicle(vehicle.id);
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              },
                             )
                           : _ActionButton(
                               label: 'SAT AL — ${vehicle.unlockCost} teňňe',
@@ -688,30 +660,4 @@ class _VehiclePreview extends StatelessWidget {
       ),
     );
   }
-}
-
-// ─── Vehicle Data ─────────────────────────────────────────────────────────────
-
-class _VehicleData {
-  final String name;
-  final String assetPath;
-  final String wheelAssetPath;
-  final double engine;
-  final double suspension;
-  final double tires;
-  final double fuel;
-  final bool unlocked;
-  final int unlockCost;
-
-  const _VehicleData({
-    required this.name,
-    required this.assetPath,
-    required this.wheelAssetPath,
-    required this.engine,
-    required this.suspension,
-    required this.tires,
-    required this.fuel,
-    required this.unlocked,
-    required this.unlockCost,
-  });
 }

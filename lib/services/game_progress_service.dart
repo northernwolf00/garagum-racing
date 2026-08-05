@@ -42,6 +42,8 @@ class GameProgressService {
 
   // ── Coins ────────────────────────────────────────────────────────────────
 
+  static const String _keySelectedVehicle = 'selected_vehicle';
+
   int getTotalCoins() {
     return _prefs?.getInt(_keyTotalCoins) ?? 0;
   }
@@ -49,6 +51,16 @@ class GameProgressService {
   Future<void> addCoins(int amount) async {
     final current = getTotalCoins();
     await _prefs?.setInt(_keyTotalCoins, current + amount);
+  }
+
+  // ── Selected Vehicle ──────────────────────────────────────────────────────
+
+  String getSelectedVehicle() {
+    return _prefs?.getString(_keySelectedVehicle) ?? 'buggy';
+  }
+
+  Future<void> setSelectedVehicle(String vehicleId) async {
+    await _prefs?.setString(_keySelectedVehicle, vehicleId);
   }
 
   // ── Rounds ───────────────────────────────────────────────────────────────

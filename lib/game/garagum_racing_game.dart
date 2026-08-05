@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
+import '../models/vehicle_config.dart';
+import '../services/game_progress_service.dart';
 import 'audio/audio_manager.dart';
 import 'components/car.dart';
 import 'components/coin.dart';
@@ -147,38 +149,21 @@ class GaragumRacingGame extends Forge2DGame {
     await _spawnFuelCanisters(tComponent);
 
     final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
-    final Car cComponent;
+    final selectedVehicleId = GameProgressService.instance.getSelectedVehicle();
+    final selectedVehicle = VehicleConfig.getById(selectedVehicleId);
 
-    switch (theme) {
-      case MapTheme.ashgabat:
-        cComponent = Car(
-          startPosition: Vector2(_spawnX, spawnY),
-          bodyAsset: 'images_ashgabat/vehicles/ak_ulag_body.png',
-          wheelAsset: 'images_ashgabat/vehicles/ak_ulag_wheel.png',
-          showDriver: false,
-        );
-        break;
-      case MapTheme.yangykala:
-        cComponent = Car(
-          startPosition: Vector2(_spawnX, spawnY),
-          bodyAsset: 'images_yangykala/vehicles/pikap_body.png',
-          wheelAsset: 'images_yangykala/vehicles/pikap_wheel.png',
-          showDriver: false,
-        );
-        break;
-      case MapTheme.derweze:
-        cComponent = Car(
-          startPosition: Vector2(_spawnX, spawnY),
-          bodyAsset: 'images_derweze/vehicles/uaz_body.png',
-          wheelAsset: 'images_derweze/vehicles/uaz_wheel.png',
-          headlightAsset: 'images_derweze/vehicles/headlight_beam.png',
-          showDriver: false,
-        );
-        break;
-      case MapTheme.garagum:
-        cComponent = Car(startPosition: Vector2(_spawnX, spawnY));
-        break;
-    }
+    // Headlight beam is only turned on during nighttime maps (Derweze)
+    final headlight = theme == MapTheme.derweze
+        ? (selectedVehicle.headlightAsset ?? 'images_derweze/vehicles/headlight_beam.png')
+        : null;
+
+    final cComponent = Car(
+      startPosition: Vector2(_spawnX, spawnY),
+      bodyAsset: selectedVehicle.bodyAsset,
+      wheelAsset: selectedVehicle.wheelAsset,
+      headlightAsset: headlight,
+      showDriver: selectedVehicle.showDriver,
+    );
     await world.add(cComponent);
     car = cComponent;
 
