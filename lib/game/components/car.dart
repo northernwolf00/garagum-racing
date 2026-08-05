@@ -7,7 +7,8 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import '../world/terrain.dart';
 
 /// A physics-driven vehicle: a boxy chassis riding on two circular wheels,
-/// connected with motorised revolute joints. Rendered with the Phase 4 art
+/// each on a motorised, spring-suspended [WheelJoint] (plus a [RopeJoint]
+/// safety limit — see [_suspensionTravel]). Rendered with the Phase 4 art
 /// (open-top buggy body, off-road wheels, seated driver) on top of the
 /// Phase 1 physics rig — the shapes below are collision-only now.
 ///
@@ -22,9 +23,28 @@ class Car extends Component with HasGameReference {
     this.wheelAsset = 'vehicles/car_wheel.png',
     this.headlightAsset,
     this.showDriver = true,
-  }) : _startPosition = startPosition;
+    double engineRating = 0.5,
+    double suspensionRating = 0.5,
+    double tireRating = 0.5,
+  })  : _startPosition = startPosition,
+        engineRating = engineRating.clamp(0.0, 1.0),
+        suspensionRating = suspensionRating.clamp(0.0, 1.0),
+        tireRating = tireRating.clamp(0.0, 1.0);
 
   final Vector2 _startPosition;
+
+  /// [VehicleConfig.engine]/[suspension]/[tires] ratings in 0..1, used to
+  /// scale this rig's tuned baseline constants (top speed & torque, head-bob
+  /// spring comfort, tire grip) per vehicle. 0.5 reproduces the pre-stats
+  /// baseline exactly, so any caller that doesn't pass these gets the
+  /// original tuned feel unchanged.
+  final double engineRating;
+  final double suspensionRating;
+  final double tireRating;
+
+  /// Maps a 0..1 stat rating to a 0.7x..1.3x multiplier on a baseline
+  /// constant, with 0.5 (the default rating) landing exactly on 1.0x.
+  static double _statScale(double rating) => 0.7 + rating * 0.6;
 
   /// Body/wheel sprite paths. Both the Garagum buggy and Aşgabat's "ak
   /// ulag" city car share the same 1024x512 wheel-arch rig (arches at
@@ -47,8 +67,12 @@ class Car extends Component with HasGameReference {
   static const double wheelRadius = 0.45;
   static const double wheelOffsetX = 1.15;
   static const double wheelOffsetY = 0.55;
-  static const double maxMotorSpeed = 32;
-  static const double motorTorque = 70;
+  static const double _baseMaxMotorSpeed = 32;
+  static const double _baseMotorTorque = 70;
+  static const double _baseWheelFriction = 2.2;
+
+  double get maxMotorSpeed => _baseMaxMotorSpeed * _statScale(engineRating);
+  double get motorTorque => _baseMotorTorque * _statScale(engineRating);
 
   /// car_body.png is 1024x512 with its front/rear wheel-arch centers at
   /// (252,400) and (772,400) — 260px either side of the image's horizontal
@@ -66,8 +90,37 @@ class Car extends Component with HasGameReference {
   static const double _driverBodySizeM = 320 * _artPxToMeters * _driverScale;
   static const double _driverHeadSizeM = 320 * _artPxToMeters * _driverScale;
 
-  static const double _springStiffness = 110.0;
-  static const double _springDamping = 10.0;
+  static const double _baseSpringStiffness = 110.0;
+  static const double _baseSpringDamping = 10.0;
+
+  double get _springStiffness =>
+      _baseSpringStiffness * _statScale(suspensionRating);
+  double get _springDamping => _baseSpringDamping * _statScale(suspensionRating);
+
+  /// Real wheel suspension (as opposed to the cosmetic head-bob spring
+  /// above). Each wheel rides on a [WheelJoint] — a spring-loaded
+  /// point-to-line constraint — instead of being pinned rigidly to the
+  /// chassis, so bumps and landings compress the suspension first instead of
+  /// slamming straight into the chassis rotation. Higher [suspensionRating]
+  /// softens the spring (more give) but damps it harder (less bounce-back)
+  /// and allows more travel — softer *and* more controlled, like a real
+  /// off-road suspension upgrade.
+  static const double _baseSuspensionFrequencyHz = 4.0;
+  static const double _baseSuspensionDampingRatio = 0.5;
+  static const double _baseSuspensionTravel = 0.3;
+
+  double get _suspensionFrequencyHz =>
+      _baseSuspensionFrequencyHz * (1.15 - suspensionRating * 0.3);
+  double get _suspensionDampingRatio =>
+      _baseSuspensionDampingRatio * _statScale(suspensionRating);
+
+  /// Hard cap on how far a wheel may stray from its rest mount, enforced by
+  /// a [RopeJoint] alongside the [WheelJoint]. This forge2d version's
+  /// [WheelJoint] has no built-in translation limit, so a spring alone could
+  /// let a hard landing (off a ramp, say) stretch the suspension arbitrarily
+  /// far for a step or two before it reels back in — the rope makes that
+  /// physically impossible instead of just physically discouraged.
+  double get _suspensionTravel => _baseSuspensionTravel * _statScale(suspensionRating);
 
   final Vector2 _lastChassisVelocity = Vector2.zero();
   final Vector2 _headDisplacement = Vector2.zero();
@@ -79,8 +132,8 @@ class Car extends Component with HasGameReference {
   late final Body chassisBody;
   late final Body frontWheelBody;
   late final Body rearWheelBody;
-  late final RevoluteJoint frontJoint;
-  late final RevoluteJoint rearJoint;
+  late final WheelJoint frontJoint;
+  late final WheelJoint rearJoint;
 
   late final Sprite _bodySprite;
   late final Sprite _wheelSprite;
@@ -191,20 +244,38 @@ class Car extends Component with HasGameReference {
     final bodyDef = BodyDef(type: BodyType.dynamic, position: position);
     final body = _world.createBody(bodyDef);
     body.createFixture(
-      FixtureDef(shape, density: 1.0, friction: 2.2, restitution: 0.15),
+      FixtureDef(
+        shape,
+        density: 1.0,
+        friction: _baseWheelFriction * _statScale(tireRating),
+        restitution: 0.15,
+      ),
     );
     return body;
   }
 
-  RevoluteJoint _attachWheel(Body chassis, Body wheel) {
-    final jointDef = RevoluteJointDef()
-      ..initialize(chassis, wheel, wheel.position)
+  WheelJoint _attachWheel(Body chassis, Body wheel) {
+    final jointDef = WheelJointDef()
+      ..initialize(chassis, wheel, wheel.position, Vector2(0, 1))
       ..enableMotor = true
       ..maxMotorTorque = motorTorque
       ..motorSpeed = 0
+      ..frequencyHz = _suspensionFrequencyHz
+      ..dampingRatio = _suspensionDampingRatio
       ..collideConnected = false;
-    final joint = RevoluteJoint(jointDef);
+    final joint = WheelJoint(jointDef);
     _world.createJoint(joint);
+
+    // Safety-net rope alongside the spring — see _suspensionTravel.
+    final ropeDef = RopeJointDef()
+      ..bodyA = chassis
+      ..bodyB = wheel
+      ..maxLength = _suspensionTravel
+      ..collideConnected = false;
+    ropeDef.localAnchorA.setFrom(jointDef.localAnchorA);
+    ropeDef.localAnchorB.setFrom(Vector2.zero());
+    _world.createJoint(RopeJoint(ropeDef));
+
     return joint;
   }
 

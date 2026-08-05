@@ -52,7 +52,12 @@ class GaragumRacingGame extends Forge2DGame {
   /// Full tank in seconds of driving. Each round gives this much fuel.
   /// Fuel canisters are placed so you can always theoretically finish
   /// if you pick them up.
-  static const double _fullFuelSeconds = 40.0;
+  static const double _baseFullFuelSeconds = 40.0;
+
+  /// Effective tank size for the currently selected vehicle, set once in
+  /// [onLoad] from [VehicleConfig.fuel] (0.5 reproduces the base value
+  /// exactly, matching [Car]'s stat-scaling convention).
+  double _fullFuelSeconds = _baseFullFuelSeconds;
 
   /// Fuel burn rate per second while the gas pedal is held.
   static const double _fuelBurnRate = 1.0; // fraction per second
@@ -163,9 +168,13 @@ class GaragumRacingGame extends Forge2DGame {
       wheelAsset: selectedVehicle.wheelAsset,
       headlightAsset: headlight,
       showDriver: selectedVehicle.showDriver,
+      engineRating: selectedVehicle.engine,
+      suspensionRating: selectedVehicle.suspension,
+      tireRating: selectedVehicle.tires,
     );
     await world.add(cComponent);
     car = cComponent;
+    _fullFuelSeconds = _baseFullFuelSeconds * (0.7 + selectedVehicle.fuel * 0.6);
 
     camera.viewfinder.anchor = Anchor.center;
     camera.viewfinder.position = cComponent.position.clone();
