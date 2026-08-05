@@ -19,6 +19,7 @@ class _GarageScreenState extends State<GarageScreen>
     _VehicleData(
       name: 'Buggy',
       assetPath: 'assets/images/vehicles/car_body.png',
+      wheelAssetPath: 'assets/images/vehicles/car_wheel.png',
       engine: 0.35,
       suspension: 0.4,
       tires: 0.5,
@@ -29,6 +30,7 @@ class _GarageScreenState extends State<GarageScreen>
     _VehicleData(
       name: 'UAZ',
       assetPath: 'assets/images/vehicles/car_body.png',
+      wheelAssetPath: 'assets/images/vehicles/car_wheel.png',
       engine: 0.55,
       suspension: 0.6,
       tires: 0.5,
@@ -39,6 +41,7 @@ class _GarageScreenState extends State<GarageScreen>
     _VehicleData(
       name: 'Pikap',
       assetPath: 'assets/images/vehicles/car_body.png',
+      wheelAssetPath: 'assets/images/vehicles/car_wheel.png',
       engine: 0.7,
       suspension: 0.65,
       tires: 0.75,
@@ -49,6 +52,8 @@ class _GarageScreenState extends State<GarageScreen>
     _VehicleData(
       name: 'Ak ulag',
       assetPath: 'assets/images/images_ashgabat/vehicles/ak_ulag_body.png',
+      wheelAssetPath:
+          'assets/images/images_ashgabat/vehicles/ak_ulag_wheel.png',
       engine: 0.6,
       suspension: 0.5,
       tires: 0.55,
@@ -242,18 +247,14 @@ class _GarageScreenState extends State<GarageScreen>
                                 color: Colors.black.withOpacity(0.4),
                               ),
                             ),
-                            // Car image
+                            // Car image (body + both wheels composited,
+                            // matching the in-race rig)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 10),
-                              child: Image.asset(
-                                vehicle.assetPath,
+                              child: _VehiclePreview(
+                                bodyAsset: vehicle.assetPath,
+                                wheelAsset: vehicle.wheelAssetPath,
                                 width: 280,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.directions_car,
-                                  size: 100,
-                                  color: Color(0xFFE8A33D),
-                                ),
                               ),
                             ),
                             // Lock overlay
@@ -619,11 +620,82 @@ class _CoinDisplay extends StatelessWidget {
   }
 }
 
+// ─── Vehicle Preview (body + wheels composited) ────────────────────────────
+
+/// Draws a vehicle's body sprite with both wheel sprites overlaid at their
+/// wheel-arch positions, so the garage shows the same complete car (body +
+/// tires) the race screen does instead of just the bare body art.
+///
+/// Mirrors [Car]'s rig: every body sprite is a 1024x512 image with
+/// front/rear wheel-arch centers at (252,400)/(772,400) and a wheel
+/// diameter of ~203.5px (derived from `Car.wheelRadius * 2 /
+/// (Car.wheelOffsetX / 260)`), scaled here to the on-screen display width.
+class _VehiclePreview extends StatelessWidget {
+  const _VehiclePreview({
+    required this.bodyAsset,
+    required this.wheelAsset,
+    required this.width,
+  });
+
+  final String bodyAsset;
+  final String wheelAsset;
+  final double width;
+
+  static const double _artWidthPx = 1024;
+  static const double _artHeightPx = 512;
+  static const Offset _frontWheelPx = Offset(252, 400);
+  static const Offset _rearWheelPx = Offset(772, 400);
+  static const double _wheelDiameterPx = 203.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = width / _artWidthPx;
+    final height = _artHeightPx * scale;
+    final wheelSize = _wheelDiameterPx * scale;
+
+    Widget wheelAt(Offset px) => Positioned(
+          left: px.dx * scale - wheelSize / 2,
+          top: px.dy * scale - wheelSize / 2,
+          width: wheelSize,
+          height: wheelSize,
+          child: Image.asset(
+            wheelAsset,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        );
+
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          wheelAt(_rearWheelPx),
+          wheelAt(_frontWheelPx),
+          Image.asset(
+            bodyAsset,
+            width: width,
+            height: height,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.directions_car,
+              size: 100,
+              color: Color(0xFFE8A33D),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Vehicle Data ─────────────────────────────────────────────────────────────
 
 class _VehicleData {
   final String name;
   final String assetPath;
+  final String wheelAssetPath;
   final double engine;
   final double suspension;
   final double tires;
@@ -634,6 +706,7 @@ class _VehicleData {
   const _VehicleData({
     required this.name,
     required this.assetPath,
+    required this.wheelAssetPath,
     required this.engine,
     required this.suspension,
     required this.tires,
