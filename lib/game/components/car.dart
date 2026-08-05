@@ -20,6 +20,7 @@ class Car extends Component with HasGameReference {
     required Vector2 startPosition,
     this.bodyAsset = 'vehicles/car_body.png',
     this.wheelAsset = 'vehicles/car_wheel.png',
+    this.headlightAsset,
     this.showDriver = true,
   }) : _startPosition = startPosition;
 
@@ -31,6 +32,9 @@ class Car extends Component with HasGameReference {
   /// these two paths is enough to reskin the car — no rig math changes.
   final String bodyAsset;
   final String wheelAsset;
+
+  /// Optional headlight beam asset path (e.g. for nighttime driving in Derweze).
+  final String? headlightAsset;
 
   /// Whether to load/render the seated driver sprites. The Aşgabat "ak
   /// ulag" city car has no driver art of its own, so it's driven with this
@@ -82,6 +86,7 @@ class Car extends Component with HasGameReference {
   late final Sprite _wheelSprite;
   Sprite? _driverBodySprite;
   Sprite? _driverHeadSprite;
+  Sprite? _headlightSprite;
 
   @override
   Future<void> onLoad() async {
@@ -89,6 +94,9 @@ class Car extends Component with HasGameReference {
 
     _bodySprite = await Sprite.load(bodyAsset);
     _wheelSprite = await Sprite.load(wheelAsset);
+    if (headlightAsset != null) {
+      _headlightSprite = await Sprite.load(headlightAsset!);
+    }
     if (showDriver) {
       _driverBodySprite = await Sprite.load('vehicles/driver_body.png');
       _driverHeadSprite = await Sprite.load('vehicles/driver_head.png');
@@ -283,6 +291,7 @@ class Car extends Component with HasGameReference {
     _renderWheel(canvas, frontWheelBody);
     _renderBody(canvas);
     if (showDriver) _renderDriver(canvas);
+    if (_headlightSprite != null) _renderHeadlight(canvas);
   }
 
   void _renderWheel(Canvas canvas, Body body) {
@@ -341,6 +350,22 @@ class Car extends Component with HasGameReference {
     );
 
     canvas.restore();
+    canvas.restore();
+  }
+
+  void _renderHeadlight(Canvas canvas) {
+    canvas.save();
+    canvas.translate(chassisBody.position.x, chassisBody.position.y);
+    canvas.rotate(chassisBody.angle);
+    // Project beam forward from front bumper
+    canvas.translate(1.8, -0.1);
+    final paint = Paint()..blendMode = BlendMode.plus;
+    _headlightSprite!.render(
+      canvas,
+      anchor: Anchor.centerLeft,
+      size: Vector2(4.5, 1.8),
+      overridePaint: paint,
+    );
     canvas.restore();
   }
 }

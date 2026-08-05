@@ -14,9 +14,11 @@ import 'components/fuel_canister.dart';
 import 'components/obstacle.dart';
 import 'world/ashgabat_decor.dart';
 import 'world/bridge.dart';
+import 'world/derweze_decor.dart';
 import 'world/desert_decor.dart';
 import 'world/parallax_background.dart';
 import 'world/terrain.dart';
+import 'world/yangykala_decor.dart';
 
 /// Forge2D world with procedural dune terrain, bridges, road obstacles,
 /// coin pickups, fuel canisters, a physics-driven car, a parallax dune
@@ -107,22 +109,32 @@ class GaragumRacingGame extends Forge2DGame {
       ));
     }
 
-    // Add sparse roadside scenery (desert camels/yurts, or Aşgabat
-    // buildings/street furniture) along the route
-    if (theme == MapTheme.ashgabat) {
-      await world.add(
-        AshgabatDecorComponent(
+    // Add roadside scenery along the route
+    switch (theme) {
+      case MapTheme.ashgabat:
+        await world.add(AshgabatDecorComponent(
           terrain: tComponent,
           seed: roundConfig.roundIndex * 71 + 11,
-        ),
-      );
-    } else {
-      await world.add(
-        DesertDecorComponent(
+        ));
+        break;
+      case MapTheme.yangykala:
+        await world.add(YangykalaDecorComponent(
           terrain: tComponent,
           seed: roundConfig.roundIndex * 71 + 11,
-        ),
-      );
+        ));
+        break;
+      case MapTheme.derweze:
+        await world.add(DerwezeDecorComponent(
+          terrain: tComponent,
+          seed: roundConfig.roundIndex * 71 + 11,
+        ));
+        break;
+      case MapTheme.garagum:
+        await world.add(DesertDecorComponent(
+          terrain: tComponent,
+          seed: roundConfig.roundIndex * 71 + 11,
+        ));
+        break;
     }
 
     // Add road obstacles
@@ -135,14 +147,38 @@ class GaragumRacingGame extends Forge2DGame {
     await _spawnFuelCanisters(tComponent);
 
     final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
-    final cComponent = theme == MapTheme.ashgabat
-        ? Car(
-            startPosition: Vector2(_spawnX, spawnY),
-            bodyAsset: 'images_ashgabat/vehicles/ak_ulag_body.png',
-            wheelAsset: 'images_ashgabat/vehicles/ak_ulag_wheel.png',
-            showDriver: false,
-          )
-        : Car(startPosition: Vector2(_spawnX, spawnY));
+    final Car cComponent;
+
+    switch (theme) {
+      case MapTheme.ashgabat:
+        cComponent = Car(
+          startPosition: Vector2(_spawnX, spawnY),
+          bodyAsset: 'images_ashgabat/vehicles/ak_ulag_body.png',
+          wheelAsset: 'images_ashgabat/vehicles/ak_ulag_wheel.png',
+          showDriver: false,
+        );
+        break;
+      case MapTheme.yangykala:
+        cComponent = Car(
+          startPosition: Vector2(_spawnX, spawnY),
+          bodyAsset: 'images_yangykala/vehicles/pikap_body.png',
+          wheelAsset: 'images_yangykala/vehicles/pikap_wheel.png',
+          showDriver: false,
+        );
+        break;
+      case MapTheme.derweze:
+        cComponent = Car(
+          startPosition: Vector2(_spawnX, spawnY),
+          bodyAsset: 'images_derweze/vehicles/uaz_body.png',
+          wheelAsset: 'images_derweze/vehicles/uaz_wheel.png',
+          headlightAsset: 'images_derweze/vehicles/headlight_beam.png',
+          showDriver: false,
+        );
+        break;
+      case MapTheme.garagum:
+        cComponent = Car(startPosition: Vector2(_spawnX, spawnY));
+        break;
+    }
     await world.add(cComponent);
     car = cComponent;
 
@@ -162,37 +198,66 @@ class GaragumRacingGame extends Forge2DGame {
     final baseStep = 10.0;
     final stepDivisor = roundConfig.obstacleFrequency;
 
-    final obstacleTypes = theme == MapTheme.ashgabat
-        ? const [
-            ObstacleType.trafficCone,
-            ObstacleType.pothole,
-            ObstacleType.barrier,
-            ObstacleType.trafficCone,
-            ObstacleType.metalRamp,
-            ObstacleType.pothole,
-            ObstacleType.trashBin,
-            ObstacleType.concreteBlock,
-            ObstacleType.constructionSign,
-            ObstacleType.trafficCone,
-            ObstacleType.speedBump,
-            ObstacleType.barrier,
-            ObstacleType.trashBin,
-          ]
-        : const [
-            ObstacleType.sazak,
-            ObstacleType.rockSmall,
-            ObstacleType.rockBig,
-            ObstacleType.sazak,
-            ObstacleType.sandRamp,
-            ObstacleType.rockSmall,
-            ObstacleType.tyreStack,
-            ObstacleType.barrel,
-            ObstacleType.crate,
-            ObstacleType.sazak,
-            ObstacleType.sandMound,
-            ObstacleType.rockBig,
-            ObstacleType.signpost,
-          ];
+    late final List<ObstacleType> obstacleTypes;
+    switch (theme) {
+      case MapTheme.ashgabat:
+        obstacleTypes = const [
+          ObstacleType.trafficCone,
+          ObstacleType.pothole,
+          ObstacleType.barrier,
+          ObstacleType.trafficCone,
+          ObstacleType.metalRamp,
+          ObstacleType.pothole,
+          ObstacleType.trashBin,
+          ObstacleType.concreteBlock,
+          ObstacleType.constructionSign,
+          ObstacleType.trafficCone,
+          ObstacleType.speedBump,
+          ObstacleType.barrier,
+          ObstacleType.trashBin,
+        ];
+        break;
+      case MapTheme.yangykala:
+        obstacleTypes = const [
+          ObstacleType.ykGayaKici,
+          ObstacleType.ykGayaUly,
+          ObstacleType.ykOpurylanGaya,
+          ObstacleType.ykGumDepejik,
+          ObstacleType.ykCukur,
+          ObstacleType.ykBochka,
+          ObstacleType.ykTigirUysmegi,
+        ];
+        break;
+      case MapTheme.derweze:
+        obstacleTypes = const [
+          ObstacleType.dwDasKici,
+          ObstacleType.dwDasUly,
+          ObstacleType.dwGumTramplin,
+          ObstacleType.dwGazTurbasy,
+          ObstacleType.dwAgylCarcasy,
+          ObstacleType.dwBochka,
+          ObstacleType.dwCukur,
+          ObstacleType.dwTigirUysmegi,
+        ];
+        break;
+      case MapTheme.garagum:
+        obstacleTypes = const [
+          ObstacleType.sazak,
+          ObstacleType.rockSmall,
+          ObstacleType.rockBig,
+          ObstacleType.sazak,
+          ObstacleType.sandRamp,
+          ObstacleType.rockSmall,
+          ObstacleType.tyreStack,
+          ObstacleType.barrel,
+          ObstacleType.crate,
+          ObstacleType.sazak,
+          ObstacleType.sandMound,
+          ObstacleType.rockBig,
+          ObstacleType.signpost,
+        ];
+        break;
+    }
     int obsIdx = roundConfig.roundIndex;
 
     while (curX < maxX) {

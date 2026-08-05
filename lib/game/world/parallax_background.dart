@@ -28,12 +28,30 @@ class ParallaxBackground {
     ('images_ashgabat/parallax/city_near.png', 0.65),
   ];
 
+  static const List<(String path, double speed)> _yangykalaLayers = [
+    ('images_yangykala/parallax/yangykala_sky.png', 0.05),
+    ('images_yangykala/parallax/mesa_far.png', 0.15),
+    ('images_yangykala/parallax/mesa_mid.png', 0.30),
+    ('images_yangykala/parallax/mesa_near.png', 0.55),
+  ];
+
+  static const List<(String path, double speed)> _derwezeLayers = [
+    ('images_derweze/parallax/derweze_sky.png', 0.05),
+    ('images_derweze/parallax/dunes_far.png', 0.15),
+    ('images_derweze/parallax/dunes_mid.png', 0.35),
+    ('images_derweze/parallax/dunes_near.png', 0.60),
+  ];
+
   static List<(String path, double speed)> _layersFor(MapTheme theme) {
     switch (theme) {
       case MapTheme.garagum:
         return _garagumLayers;
       case MapTheme.ashgabat:
         return _ashgabatLayers;
+      case MapTheme.yangykala:
+        return _yangykalaLayers;
+      case MapTheme.derweze:
+        return _derwezeLayers;
     }
   }
 

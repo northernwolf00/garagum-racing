@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 
 import '../../services/game_progress_service.dart';
 import '../levels/ashgabat_levels_screen.dart';
+import '../levels/derweze_levels_screen.dart';
 import '../levels/garagum_levels_screen.dart';
+import '../levels/yangykala_levels_screen.dart';
 import '../garage/garage_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -52,10 +54,10 @@ class _MenuScreenState extends State<MenuScreen>
     _MapItem(
       id: 'yannykala',
       title: 'Ýaňňykala',
-      subtitle: 'Steep cliffs & canyon paths',
+      subtitle: 'Dik gaýalar hem kanyon geçelgeleri',
       assetPath: '',
-      isUnlocked: false,
-      badgeText: 'ÝAPYK',
+      isUnlocked: true,
+      badgeText: 'AÇYK',
       gradientColors: [Color(0xFFD35400), Color(0xFF6E2C00)],
     ),
     _MapItem(
@@ -63,8 +65,8 @@ class _MenuScreenState extends State<MenuScreen>
       title: 'Derweze (Gaz krateri)',
       subtitle: 'Gije, alaw hem gapanak bökdençler',
       assetPath: '',
-      isUnlocked: false,
-      badgeText: 'ÝAPYK',
+      isUnlocked: true,
+      badgeText: 'AÇYK',
       gradientColors: [Color(0xFFC0392B), Color(0xFF641E16)],
     ),
   ];
@@ -180,31 +182,33 @@ class _MenuScreenState extends State<MenuScreen>
       return;
     }
 
-    if (currentMap.id == 'garagum' || currentMap.id == 'ashgabat') {
-      // Open the round-selection grid for whichever unlocked map was picked
-      FlameAudio.bgm.pause();
-      Navigator.of(context).push(
-        PageRouteBuilder(
-          pageBuilder: (_, animation, __) => currentMap.id == 'garagum'
-              ? const GaragumLevelsScreen()
-              : const AshgabatLevelsScreen(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      ).then((_) {
-        if (mounted && _soundOn) FlameAudio.bgm.resume();
-      });
-    } else {
-      // Future maps still open race screen directly (placeholder)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bu karta heniz elýeterli däl.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+    Widget getLevelsScreen() {
+      switch (currentMap.id) {
+        case 'garagum':
+          return const GaragumLevelsScreen();
+        case 'ashgabat':
+          return const AshgabatLevelsScreen();
+        case 'yannykala':
+          return const YangykalaLevelsScreen();
+        case 'derweze':
+          return const DerwezeLevelsScreen();
+        default:
+          return const GaragumLevelsScreen();
+      }
     }
+
+    FlameAudio.bgm.pause();
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, animation, __) => getLevelsScreen(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    ).then((_) {
+      if (mounted && _soundOn) FlameAudio.bgm.resume();
+    });
   }
 
   void _onGarage() {

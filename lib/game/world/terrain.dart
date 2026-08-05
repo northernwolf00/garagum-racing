@@ -72,14 +72,22 @@ class Terrain extends BodyComponent {
   }
 
   double baseHeightAt(double x) {
-    if (theme == MapTheme.ashgabat) {
-      // Flat paved street — gentle rolling only, no dune-scale relief.
-      return sin(x * 0.04) * 0.35 + sin(x * 0.011 + 0.6) * 0.5 + 4.0;
+    switch (theme) {
+      case MapTheme.ashgabat:
+        // Flat paved street — gentle rolling only, no dune-scale relief.
+        return sin(x * 0.04) * 0.35 + sin(x * 0.011 + 0.6) * 0.5 + 4.0;
+      case MapTheme.yangykala:
+        // Canyon mesa cliffs & steep step plateaus
+        return sin(x * 0.05) * 4.5 + sin(x * 0.02) * 5.0 + sin(x * 0.12) * 2.0 + 7.0;
+      case MapTheme.derweze:
+        // Nighttime desert dunes & gentle crater dips
+        return sin(x * 0.08) * 2.8 + sin(x * 0.025) * 5.5 + sin(x * 0.006 + 1.2) * 2.0 + 5.5;
+      case MapTheme.garagum:
+        return sin(x * 0.09) * 3.0 +
+            sin(x * 0.03) * 6.0 +
+            sin(x * 0.005 + 1.7) * 2.5 +
+            6.0;
     }
-    return sin(x * 0.09) * 3.0 +
-        sin(x * 0.03) * 6.0 +
-        sin(x * 0.005 + 1.7) * 2.5 +
-        6.0;
   }
 
   /// Returns the elevation (height) of the ground surface at x.
@@ -177,12 +185,27 @@ class Terrain extends BodyComponent {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    final fillPath = theme == MapTheme.ashgabat
-        ? 'images_ashgabat/terrain/asphalt_fill.png'
-        : 'terrain/terrain_fill.png';
-    final topPath = theme == MapTheme.ashgabat
-        ? 'images_ashgabat/terrain/asphalt_top.png'
-        : 'terrain/terrain_top.png';
+    late final String fillPath;
+    late final String topPath;
+
+    switch (theme) {
+      case MapTheme.ashgabat:
+        fillPath = 'images_ashgabat/terrain/asphalt_fill.png';
+        topPath = 'images_ashgabat/terrain/asphalt_top.png';
+        break;
+      case MapTheme.yangykala:
+        fillPath = 'images_yangykala/terrain/rock_layers_fill.png';
+        topPath = 'images_yangykala/terrain/rock_top.png';
+        break;
+      case MapTheme.derweze:
+        fillPath = 'images_derweze/terrain/sand_fill.png';
+        topPath = 'images_derweze/terrain/sand_top.png';
+        break;
+      case MapTheme.garagum:
+        fillPath = 'terrain/terrain_fill.png';
+        topPath = 'terrain/terrain_top.png';
+        break;
+    }
 
     final fillImg = await Flame.images.load(fillPath);
     final topImg = await Flame.images.load(topPath);

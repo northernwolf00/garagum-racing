@@ -56,6 +56,18 @@ flutter:
     - assets/images/images_ashgabat/parallax/
     - assets/images/images_ashgabat/terrain/
     - assets/images/images_ashgabat/vehicles/
+    - assets/images/images_yangykala/cliffs/
+    - assets/images/images_yangykala/obstacles/
+    - assets/images/images_yangykala/parallax/
+    - assets/images/images_yangykala/props/
+    - assets/images/images_yangykala/terrain/
+    - assets/images/images_yangykala/vehicles/
+    - assets/images/images_derweze/crater/
+    - assets/images/images_derweze/obstacles/
+    - assets/images/images_derweze/parallax/
+    - assets/images/images_derweze/props/
+    - assets/images/images_derweze/terrain/
+    - assets/images/images_derweze/vehicles/
     - assets/audio/music/
     - assets/audio/sfx/
 
