@@ -12,6 +12,7 @@ class _DecorPlacement {
     required this.type,
     required this.x,
     required this.groundY,
+    required this.angle,
     required this.scale,
     required this.flip,
   });
@@ -19,6 +20,7 @@ class _DecorPlacement {
   final _DecorType type;
   final double x;
   final double groundY;
+  final double angle;
   final double scale;
   final bool flip;
 }
@@ -71,15 +73,36 @@ class DesertDecorComponent extends Component {
       if (terrain.isInsideBridgeSpan(curX, extraMargin: 8.0)) continue;
 
       final isYurt = _rand.nextDouble() < _yurtChance;
-      final groundY = -terrain.heightAt(curX);
+      double decorX = curX;
+      double groundAngle = terrain.getGroundAngle(decorX);
+
+      // Prefer flatter ground for wide structures like yurts so they sit flush
+      if (isYurt && groundAngle.abs() > 0.18) {
+        double bestX = decorX;
+        double minAngle = groundAngle.abs();
+        for (double dx = -5.0; dx <= 5.0; dx += 1.0) {
+          final candX = curX + dx;
+          if (terrain.isInsideBridgeSpan(candX, extraMargin: 8.0)) continue;
+          final candAngle = terrain.getGroundAngle(candX).abs();
+          if (candAngle < minAngle) {
+            minAngle = candAngle;
+            bestX = candX;
+          }
+        }
+        decorX = bestX;
+        groundAngle = terrain.getGroundAngle(decorX);
+      }
+
+      final groundY = -terrain.heightAt(decorX);
       final scale = 0.85 + _rand.nextDouble() * 0.35;
       final flip = _rand.nextBool();
 
       _placements.add(
         _DecorPlacement(
           type: isYurt ? _DecorType.yurt : _DecorType.camel,
-          x: curX,
+          x: decorX,
           groundY: groundY,
+          angle: groundAngle,
           scale: scale,
           flip: flip,
         ),
@@ -96,6 +119,7 @@ class DesertDecorComponent extends Component {
 
       canvas.save();
       canvas.translate(p.x, p.groundY);
+      canvas.rotate(p.angle);
       if (p.flip) canvas.scale(-1, 1);
       sprite.render(
         canvas,

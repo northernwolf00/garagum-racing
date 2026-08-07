@@ -148,6 +148,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   void _goToMenu() {
     if (_isNavigatingAway) return;
     _isNavigatingAway = true;
+    _game.audio.stopEngine();
+    _game.audio.dispose();
     _game.pauseEngine();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -158,7 +160,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
         pageBuilder: (_, animation, __) => const MenuScreen(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: const Duration(milliseconds: 300),
       ),
       (route) => false,
     );
@@ -167,6 +169,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   void _goToLevels() {
     if (_isNavigatingAway) return;
     _isNavigatingAway = true;
+    _game.audio.stopEngine();
+    _game.audio.dispose();
     _game.pauseEngine();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -177,7 +181,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
         pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: const Duration(milliseconds: 300),
       ),
       (route) => false,
     );
@@ -186,6 +190,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   void _restart() {
     if (_isNavigatingAway) return;
     _isNavigatingAway = true;
+    _game.audio.stopEngine();
+    _game.audio.dispose();
     _game.pauseEngine();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -194,9 +200,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => RaceScreen(roundConfig: _round),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 300),
+        transitionDuration: Duration.zero,
       ),
     );
   }
@@ -209,7 +213,42 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
       body: Stack(
         children: [
           // ── Game canvas ──────────────────────────────────────────────
-          Positioned.fill(child: GameWidget(game: _game)),
+          Positioned.fill(
+            child: GameWidget<GaragumRacingGame>(
+              game: _game,
+              loadingBuilder: (context) => Container(
+                color: const Color(0xFF140A03),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFFFF8C00),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'ÝÜKLENÝÄR...',
+                        style: TextStyle(
+                          color: Color(0xFFFFD98C),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 3,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
 
           // ── HUD fade-in ──────────────────────────────────────────────
           FadeTransition(
@@ -744,8 +783,10 @@ class _OutOfFuelOverlay extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0x33FF8C00),
                     shape: BoxShape.circle,
-                    border:
-                        Border.all(color: const Color(0xFFFF8C00), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFFF8C00),
+                      width: 2,
+                    ),
                   ),
                   child: Center(
                     child: Image.asset(
@@ -967,8 +1008,10 @@ class _CrashOverlay extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0x33FF4500),
                     shape: BoxShape.circle,
-                    border:
-                        Border.all(color: const Color(0xFFFF5500), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFFF5500),
+                      width: 2,
+                    ),
                   ),
                   child: const Icon(
                     Icons.warning_amber_rounded,
@@ -1126,8 +1169,10 @@ class _FinishOverlayState extends State<_FinishOverlay>
   @override
   Widget build(BuildContext context) {
     final passed = widget.coinsCollected >= widget.round.requiredCoins;
-    final nextUnlocked = passed &&
-        widget.round.roundIndex < RoundConfig.totalRoundsFor(widget.round.theme);
+    final nextUnlocked =
+        passed &&
+        widget.round.roundIndex <
+            RoundConfig.totalRoundsFor(widget.round.theme);
 
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
@@ -1444,4 +1489,3 @@ class _OverlayBtn extends StatelessWidget {
     );
   }
 }
-

@@ -4,6 +4,8 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
@@ -27,7 +29,7 @@ import 'world/yangykala_decor.dart';
 /// backdrop and an engine-sound loop.
 class GaragumRacingGame extends Forge2DGame {
   GaragumRacingGame({required this.roundConfig})
-      : super(gravity: Vector2(0, 22), zoom: 28);
+    : super(gravity: Vector2(0, 22), zoom: 28);
 
   final RoundConfig roundConfig;
 
@@ -59,8 +61,25 @@ class GaragumRacingGame extends Forge2DGame {
   /// exactly, matching [Car]'s stat-scaling convention).
   double _fullFuelSeconds = _baseFullFuelSeconds;
 
-  /// Fuel burn rate per second while the gas pedal is held.
-  static const double _fuelBurnRate = 1.0; // fraction per second
+  /// Continuous passive fuel burn rate per second (idle engine consumption from start).
+  static const double _idleFuelBurnRate = 1.0;
+
+  /// Additional fuel burn rate per second while throttle (gas/brake) is applied.
+  static const double _activeFuelBurnRate = 0.4;
+
+  /// Fuel fraction at which we warn the player and guarantee a canister
+  /// spawns just ahead of the car — well before the tank actually empties,
+  /// so nobody gets stranded between the pre-placed canisters.
+  static const double _lowFuelWarningThreshold = 0.25;
+
+  /// Fuel fraction the tank must climb back above before another low-fuel
+  /// warning/emergency canister can fire later in the same round.
+  static const double _lowFuelResetThreshold = 0.5;
+
+  /// How far ahead of the car (in meters) an emergency canister spawns.
+  static const double _emergencyCanisterAheadDistance = 35.0;
+
+  bool _lowFuelWarned = false;
 
   Terrain? terrain;
   Car? car;
@@ -81,6 +100,28 @@ class GaragumRacingGame extends Forge2DGame {
   final ValueNotifier<double> fuelNotifier = ValueNotifier(1.0);
   final ValueNotifier<int> coinNotifier = ValueNotifier(0);
 
+  void _safeUpdateCoinNotifier(int val) {
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        coinNotifier.value = val;
+      });
+    } else {
+      coinNotifier.value = val;
+    }
+  }
+
+  void _safeUpdateFuelNotifier(double val) {
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        fuelNotifier.value = val;
+      });
+    } else {
+      fuelNotifier.value = val;
+    }
+  }
+
   double get fuel => fuelNotifier.value;
 
   double _throttleInput = 0;
@@ -96,96 +137,130 @@ class GaragumRacingGame extends Forge2DGame {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    camera.backdrop = await ParallaxBackground.load(size, theme: theme);
+    try {
+      try {
+        final bg = await ParallaxBackground.load(size, theme: theme);
+        if (size.x > 0 && size.y > 0) {
+          bg.size = size.clone();
+          bg.parallax?.resize(size);
+        }
+        camera.backdrop = bg;
+      } catch (e) {
+        debugPrint('Error loading ParallaxBackground: $e');
+      }
 
-    final tComponent = Terrain(roundConfig: roundConfig, theme: theme);
-    await world.add(tComponent);
-    terrain = tComponent;
+      final tComponent = Terrain(roundConfig: roundConfig, theme: theme);
+      await world.add(tComponent);
+      terrain = tComponent;
 
-    // Add Canal Bridges along the route (Garagum only — Terrain generates
-    // no bridge spans at all for the Aşgabat theme, so this loop no-ops).
-    for (final bridgeSpan in tComponent.bridgeSpans) {
-      if (bridgeSpan.startX > roundConfig.distanceMeters + _spawnX) break;
-      final deckY = -tComponent.baseHeightAt(bridgeSpan.startX);
-      final canalBottomY = deckY + Terrain.canalDepth;
-      await world.add(BridgeComponent(
-        startX: bridgeSpan.startX,
-        endX: bridgeSpan.endX,
-        deckY: deckY,
-        canalBottomY: canalBottomY,
-      ));
+      // Add Canal Bridges along the route (Garagum only — Terrain generates
+      // no bridge spans at all for the Aşgabat theme, so this loop no-ops).
+      final List<Component> bridges = [];
+      for (final bridgeSpan in tComponent.bridgeSpans) {
+        if (bridgeSpan.startX > roundConfig.distanceMeters + _spawnX) break;
+        final deckY = -tComponent.baseHeightAt(bridgeSpan.startX);
+        final canalBottomY = deckY + Terrain.canalDepth;
+        bridges.add(
+          BridgeComponent(
+            startX: bridgeSpan.startX,
+            endX: bridgeSpan.endX,
+            deckY: deckY,
+            canalBottomY: canalBottomY,
+          ),
+        );
+      }
+      if (bridges.isNotEmpty) {
+        world.addAll(bridges);
+      }
+
+      // Add roadside scenery along the route
+      switch (theme) {
+        case MapTheme.ashgabat:
+          await world.add(
+            AshgabatDecorComponent(
+              terrain: tComponent,
+              seed: roundConfig.roundIndex * 71 + 11,
+            ),
+          );
+          break;
+        case MapTheme.yangykala:
+          await world.add(
+            YangykalaDecorComponent(
+              terrain: tComponent,
+              seed: roundConfig.roundIndex * 71 + 11,
+            ),
+          );
+          break;
+        case MapTheme.derweze:
+          await world.add(
+            DerwezeDecorComponent(
+              terrain: tComponent,
+              seed: roundConfig.roundIndex * 71 + 11,
+            ),
+          );
+          break;
+        case MapTheme.garagum:
+          await world.add(
+            DesertDecorComponent(
+              terrain: tComponent,
+              seed: roundConfig.roundIndex * 71 + 11,
+            ),
+          );
+          break;
+      }
+
+      // Add road obstacles
+      _spawnRoadObstacles(tComponent);
+
+      // Add coins along the route
+      _spawnCoins(tComponent);
+
+      // Add fuel canisters at danger intervals
+      _spawnFuelCanisters(tComponent);
+
+      final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
+      final selectedVehicleId =
+          GameProgressService.instance.getSelectedVehicle();
+      final selectedVehicle = VehicleConfig.getById(selectedVehicleId);
+
+      // Headlight beam is only turned on during nighttime maps (Derweze)
+      final headlight = theme == MapTheme.derweze
+          ? (selectedVehicle.headlightAsset ??
+                'images_derweze/vehicles/headlight_beam.png')
+          : null;
+
+      final cComponent = Car(
+        startPosition: Vector2(_spawnX, spawnY),
+        bodyAsset: selectedVehicle.bodyAsset,
+        wheelAsset: selectedVehicle.wheelAsset,
+        headlightAsset: headlight,
+        showDriver: selectedVehicle.showDriver,
+        engineRating: selectedVehicle.engine,
+        suspensionRating: selectedVehicle.suspension,
+        tireRating: selectedVehicle.tires,
+      );
+      await world.add(cComponent);
+      car = cComponent;
+      _fullFuelSeconds =
+          _baseFullFuelSeconds * (0.7 + selectedVehicle.fuel * 0.6);
+
+      camera.viewfinder.anchor = Anchor.center;
+      camera.viewfinder.position = cComponent.position.clone();
+      _lastCameraPosition.setFrom(camera.viewfinder.position);
+
+      try {
+        await audio.init();
+      } catch (e) {
+        debugPrint('Error initializing AudioManager: $e');
+      }
+    } catch (e, st) {
+      debugPrint('Error during GaragumRacingGame.onLoad: $e\n$st');
     }
-
-    // Add roadside scenery along the route
-    switch (theme) {
-      case MapTheme.ashgabat:
-        await world.add(AshgabatDecorComponent(
-          terrain: tComponent,
-          seed: roundConfig.roundIndex * 71 + 11,
-        ));
-        break;
-      case MapTheme.yangykala:
-        await world.add(YangykalaDecorComponent(
-          terrain: tComponent,
-          seed: roundConfig.roundIndex * 71 + 11,
-        ));
-        break;
-      case MapTheme.derweze:
-        await world.add(DerwezeDecorComponent(
-          terrain: tComponent,
-          seed: roundConfig.roundIndex * 71 + 11,
-        ));
-        break;
-      case MapTheme.garagum:
-        await world.add(DesertDecorComponent(
-          terrain: tComponent,
-          seed: roundConfig.roundIndex * 71 + 11,
-        ));
-        break;
-    }
-
-    // Add road obstacles
-    await _spawnRoadObstacles(tComponent);
-
-    // Add coins along the route
-    await _spawnCoins(tComponent);
-
-    // Add fuel canisters at danger intervals
-    await _spawnFuelCanisters(tComponent);
-
-    final spawnY = -tComponent.heightAt(_spawnX) - _spawnClearance;
-    final selectedVehicleId = GameProgressService.instance.getSelectedVehicle();
-    final selectedVehicle = VehicleConfig.getById(selectedVehicleId);
-
-    // Headlight beam is only turned on during nighttime maps (Derweze)
-    final headlight = theme == MapTheme.derweze
-        ? (selectedVehicle.headlightAsset ?? 'images_derweze/vehicles/headlight_beam.png')
-        : null;
-
-    final cComponent = Car(
-      startPosition: Vector2(_spawnX, spawnY),
-      bodyAsset: selectedVehicle.bodyAsset,
-      wheelAsset: selectedVehicle.wheelAsset,
-      headlightAsset: headlight,
-      showDriver: selectedVehicle.showDriver,
-      engineRating: selectedVehicle.engine,
-      suspensionRating: selectedVehicle.suspension,
-      tireRating: selectedVehicle.tires,
-    );
-    await world.add(cComponent);
-    car = cComponent;
-    _fullFuelSeconds = _baseFullFuelSeconds * (0.7 + selectedVehicle.fuel * 0.6);
-
-    camera.viewfinder.anchor = Anchor.center;
-    camera.viewfinder.position = cComponent.position.clone();
-    _lastCameraPosition.setFrom(camera.viewfinder.position);
-
-    await audio.init();
   }
 
   // ── Obstacle spawning ────────────────────────────────────────────────────
 
-  Future<void> _spawnRoadObstacles(Terrain tComponent) async {
+  void _spawnRoadObstacles(Terrain tComponent) {
     final rand = Random(roundConfig.roundIndex * 31);
     double curX = 15.0;
     final maxX = _spawnX + roundConfig.distanceMeters + 20;
@@ -253,6 +328,7 @@ class GaragumRacingGame extends Forge2DGame {
         break;
     }
     int obsIdx = roundConfig.roundIndex;
+    final List<Component> obstacles = [];
 
     while (curX < maxX) {
       final step = (baseStep / stepDivisor) + rand.nextDouble() * 6.0;
@@ -268,22 +344,34 @@ class GaragumRacingGame extends Forge2DGame {
       final obsSize = ObstacleComponent.getSizeForType(type);
       final halfH = obsSize.y / 2;
 
-      await world.add(ObstacleComponent(
-        type: type,
-        startPosition: Vector2(curX, groundY - halfH + 0.15),
-        groundAngle: groundAngle,
-      ));
+      final isPit =
+          type == ObstacleType.pothole ||
+          type == ObstacleType.ykCukur ||
+          type == ObstacleType.dwCukur;
+      final yOffset = isPit ? 0.02 : 0.15;
+
+      obstacles.add(
+        ObstacleComponent(
+          type: type,
+          startPosition: Vector2(curX, groundY - halfH + yOffset),
+          groundAngle: groundAngle,
+        ),
+      );
+    }
+    if (obstacles.isNotEmpty) {
+      world.addAll(obstacles);
     }
   }
 
   // ── Coin spawning ─────────────────────────────────────────────────────────
 
-  Future<void> _spawnCoins(Terrain tComponent) async {
+  void _spawnCoins(Terrain tComponent) {
     final rand = Random(roundConfig.roundIndex * 17 + 3);
     final totalCoins = roundConfig.totalCoins;
     final maxX = _spawnX + roundConfig.distanceMeters;
     final usableRange = maxX - 20.0;
     final step = usableRange / totalCoins;
+    final List<Component> coins = [];
 
     for (int i = 0; i < totalCoins; i++) {
       final baseX = 18.0 + i * step;
@@ -298,10 +386,13 @@ class GaragumRacingGame extends Forge2DGame {
       final coin = CoinComponent(worldPosition: coinPos);
       coin.onCollected = () {
         _coinsCollected++;
-        coinNotifier.value = _coinsCollected;
+        _safeUpdateCoinNotifier(_coinsCollected);
         audio.playCoinSound();
       };
-      await world.add(coin);
+      coins.add(coin);
+    }
+    if (coins.isNotEmpty) {
+      world.addAll(coins);
     }
   }
 
@@ -315,7 +406,7 @@ class GaragumRacingGame extends Forge2DGame {
   /// slowdowns, which burn more fuel per meter than the flat-road estimate.
   static const double _fuelCanisterSpacing = 220.0;
 
-  Future<void> _spawnFuelCanisters(Terrain tComponent) async {
+  void _spawnFuelCanisters(Terrain tComponent) {
     final usableStart = _spawnX + 60.0;
     final maxX = _spawnX + roundConfig.distanceMeters - 10.0;
     if (maxX <= usableStart) return;
@@ -324,6 +415,7 @@ class GaragumRacingGame extends Forge2DGame {
     final count = (span / _fuelCanisterSpacing).ceil().clamp(1, 20);
     final step = span / count;
     final rand = Random(roundConfig.roundIndex * 53 + 7);
+    final List<Component> canisters = [];
 
     for (int i = 0; i < count; i++) {
       final baseX = usableStart + step * (i + 0.5);
@@ -341,14 +433,43 @@ class GaragumRacingGame extends Forge2DGame {
       // Float canister 0.8m above terrain — slightly lower than coins
       final canisterPos = Vector2(curX, groundY - 0.9);
 
-      final canister = FuelCanisterComponent(worldPosition: canisterPos);
-      canister.onCollected = () {
-        fuelNotifier.value =
-            (fuelNotifier.value + 0.55).clamp(0.0, 1.0); // refill ~55%
-        audio.playFuelSound();
-      };
-      await world.add(canister);
+      canisters.add(_makeFuelCanister(canisterPos));
     }
+    if (canisters.isNotEmpty) {
+      world.addAll(canisters);
+    }
+  }
+
+  FuelCanisterComponent _makeFuelCanister(Vector2 worldPosition) {
+    final canister = FuelCanisterComponent(worldPosition: worldPosition);
+    canister.onCollected = () {
+      _safeUpdateFuelNotifier(
+        (fuelNotifier.value + 0.55).clamp(0.0, 1.0),
+      ); // refill ~55%
+      audio.playFuelSound();
+    };
+    return canister;
+  }
+
+  /// Drops a canister a short way ahead of the car when fuel runs low, so a
+  /// player who missed every pre-placed canister still has a shot at
+  /// refuelling instead of being guaranteed to strand out on the road.
+  void _spawnEmergencyFuelCanister() {
+    final currentCar = car;
+    final currentTerrain = terrain;
+    if (currentCar == null || currentTerrain == null) return;
+
+    final maxX = _spawnX + roundConfig.distanceMeters - 5.0;
+    var curX = currentCar.position.x + _emergencyCanisterAheadDistance;
+    if (curX >= maxX) return; // too close to the finish to bother
+
+    if (currentTerrain.isInsideBridgeSpan(curX, extraMargin: 4.0)) {
+      curX = (curX + 10.0).clamp(currentCar.position.x + 10.0, maxX);
+      if (currentTerrain.isInsideBridgeSpan(curX, extraMargin: 4.0)) return;
+    }
+
+    final groundY = -currentTerrain.heightAt(curX);
+    world.add(_makeFuelCanister(Vector2(curX, groundY - 0.9)));
   }
 
   // ── Game loop ─────────────────────────────────────────────────────────────
@@ -359,6 +480,13 @@ class GaragumRacingGame extends Forge2DGame {
     final background = camera.backdrop;
     if (background is ParallaxComponent) {
       background.size = size.clone();
+      // Setting the component's size alone doesn't re-scale the layers —
+      // Parallax caches its own clip rect from whatever size it was last
+      // resized to, so without this the backdrop stays clipped to
+      // whatever (often smaller, pre-rotation) size it had when the race
+      // screen first loaded, leaving the rest of the canvas showing the
+      // plain sky-color background fill instead of the parallax art.
+      background.parallax?.resize(size);
     }
   }
 
@@ -372,14 +500,26 @@ class GaragumRacingGame extends Forge2DGame {
     final currentTerrain = terrain;
     if (currentCar == null || currentTerrain == null) return;
 
-    // Burn fuel while driving (only when gas is applied)
+    // Burn fuel continuously over time (engine running from start, burning faster with gas)
     if (!isCrashed && !_isFinished && !_outOfFuel) {
       final throttleAbs = _throttleInput.abs();
-      if (throttleAbs > 0) {
-        final newFuel = (fuelNotifier.value -
-                (_fuelBurnRate / _fullFuelSeconds) * throttleAbs * dt)
-            .clamp(0.0, 1.0);
-        fuelNotifier.value = newFuel;
+      final effectiveBurnRate =
+          _idleFuelBurnRate + (_activeFuelBurnRate * throttleAbs);
+      final newFuel =
+          (fuelNotifier.value - (effectiveBurnRate / _fullFuelSeconds) * dt)
+              .clamp(0.0, 1.0);
+      _safeUpdateFuelNotifier(newFuel);
+
+      // Low-fuel warning + emergency canister, latched so it only fires
+      // once per "running low" episode (re-armed once refuelled back up).
+      if (fuelNotifier.value <= _lowFuelWarningThreshold) {
+        if (!_lowFuelWarned) {
+          _lowFuelWarned = true;
+          audio.playLowFuelWarningSound();
+          _spawnEmergencyFuelCanister();
+        }
+      } else if (fuelNotifier.value > _lowFuelResetThreshold) {
+        _lowFuelWarned = false;
       }
 
       // Out of fuel check
@@ -418,7 +558,10 @@ class GaragumRacingGame extends Forge2DGame {
       final dx = viewfinder.position.x - _lastCameraPosition.x;
       final background = camera.backdrop;
       if (background is ParallaxComponent) {
-        if (background.size != size) background.size = size.clone();
+        if (background.size != size) {
+          background.size = size.clone();
+          background.parallax?.resize(size);
+        }
         background.parallax?.baseVelocity.x = (dx / dt) * viewfinder.zoom;
       }
     }

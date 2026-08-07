@@ -26,10 +26,10 @@ class Car extends Component with HasGameReference {
     double engineRating = 0.5,
     double suspensionRating = 0.5,
     double tireRating = 0.5,
-  })  : _startPosition = startPosition,
-        engineRating = engineRating.clamp(0.0, 1.0),
-        suspensionRating = suspensionRating.clamp(0.0, 1.0),
-        tireRating = tireRating.clamp(0.0, 1.0);
+  }) : _startPosition = startPosition,
+       engineRating = engineRating.clamp(0.0, 1.0),
+       suspensionRating = suspensionRating.clamp(0.0, 1.0),
+       tireRating = tireRating.clamp(0.0, 1.0);
 
   final Vector2 _startPosition;
 
@@ -95,7 +95,8 @@ class Car extends Component with HasGameReference {
 
   double get _springStiffness =>
       _baseSpringStiffness * _statScale(suspensionRating);
-  double get _springDamping => _baseSpringDamping * _statScale(suspensionRating);
+  double get _springDamping =>
+      _baseSpringDamping * _statScale(suspensionRating);
 
   /// Real wheel suspension (as opposed to the cosmetic head-bob spring
   /// above). Each wheel rides on a [WheelJoint] — a spring-loaded
@@ -120,7 +121,8 @@ class Car extends Component with HasGameReference {
   /// let a hard landing (off a ramp, say) stretch the suspension arbitrarily
   /// far for a step or two before it reels back in — the rope makes that
   /// physically impossible instead of just physically discouraged.
-  double get _suspensionTravel => _baseSuspensionTravel * _statScale(suspensionRating);
+  double get _suspensionTravel =>
+      _baseSuspensionTravel * _statScale(suspensionRating);
 
   final Vector2 _lastChassisVelocity = Vector2.zero();
   final Vector2 _headDisplacement = Vector2.zero();

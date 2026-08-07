@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
 import '../../services/game_progress_service.dart';
+import '../menu/menu_screen.dart';
 import '../race_screen.dart';
 
 /// Theme-agnostic round-selection grid. Shown after picking a map from the
@@ -42,6 +43,8 @@ class _LevelsScreenState extends State<LevelsScreen>
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
     ]);
     _fadeCtrl = AnimationController(
       vsync: this,
@@ -57,16 +60,39 @@ class _LevelsScreenState extends State<LevelsScreen>
     super.dispose();
   }
 
-  void _onRoundTap(RoundConfig round) {
-    if (!_progress.isRoundUnlocked(widget.theme, round.roundIndex)) return;
-    Navigator.of(context).push(
+  // RaceScreen reaches this screen via pushAndRemoveUntil (it clears the
+  // whole stack when going "TURLAR" after a crash/finish), so this can end
+  // up as the only route in the Navigator. A plain pop() in that case empties
+  // the stack entirely and leaves a black screen — fall back to pushing the
+  // menu instead.
+  void _onBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    navigator.pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => RaceScreen(roundConfig: round),
+        pageBuilder: (_, animation, __) => const MenuScreen(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 400),
       ),
-    ).then((_) => setState(() {})); // refresh on return
+    );
+  }
+
+  void _onRoundTap(RoundConfig round) {
+    if (!_progress.isRoundUnlocked(widget.theme, round.roundIndex)) return;
+    Navigator.of(context)
+        .push(
+          PageRouteBuilder(
+            pageBuilder: (_, animation, __) => RaceScreen(roundConfig: round),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
+            transitionDuration: const Duration(milliseconds: 400),
+          ),
+        )
+        .then((_) => setState(() {})); // refresh on return
   }
 
   @override
@@ -79,103 +105,134 @@ class _LevelsScreenState extends State<LevelsScreen>
     final minFreq = widget.rounds.first.obstacleFrequency;
     final maxFreq = widget.rounds.last.obstacleFrequency;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A0E06),
-      body: FadeTransition(
-        opacity: _fade,
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              backgroundColor: const Color(0xFF1A0E06),
-              pinned: true,
-              expandedHeight: 120,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: Color(0xFFFFD98C)),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding:
-                    const EdgeInsets.only(left: 60, bottom: 16),
-                title: Text(
-                  widget.headerTitle,
-                  style: const TextStyle(
+    final mediaQuery = MediaQuery.of(context);
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    final screenWidth = mediaQuery.size.width;
+
+    final int crossAxisCount = isLandscape
+        ? (screenWidth > 900 ? 5 : 4)
+        : (screenWidth > 600 ? 3 : 2);
+    final double childAspectRatio = isLandscape ? 1.25 : 1.1;
+    final double expandedHeight = isLandscape ? 70.0 : 120.0;
+
+    return PopScope(
+      canPop: Navigator.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _onBack();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1A0E06),
+        body: FadeTransition(
+          opacity: _fade,
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                backgroundColor: const Color(0xFF1A0E06),
+                pinned: true,
+                expandedHeight: expandedHeight,
+                leading: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
                     color: Color(0xFFFFD98C),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
                   ),
+                  onPressed: _onBack,
                 ),
-                background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF0B1829), Color(0xFF1A0E06)],
+                flexibleSpace: FlexibleSpaceBar(
+                  titlePadding: EdgeInsets.only(
+                    left: 60,
+                    bottom: isLandscape ? 10 : 16,
+                  ),
+                  title: Text(
+                    widget.headerTitle,
+                    style: TextStyle(
+                      color: const Color(0xFFFFD98C),
+                      fontSize: isLandscape ? 15 : 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                  background: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFF0B1829), Color(0xFF1A0E06)],
+                      ),
                     ),
                   ),
                 ),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      right: 16,
+                      top: 8,
+                      bottom: 8,
+                    ),
+                    child: _CoinBadge(coins: totalCoins),
+                  ),
+                ],
               ),
-              actions: [
-                Padding(
-                  padding:
-                      const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-                  child: _CoinBadge(coins: totalCoins),
-                ),
-              ],
-            ),
 
-            // Progress summary
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: _ProgressSummary(
-                  completed: completedCount,
-                  total: widget.rounds.length,
+              // Progress summary
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    isLandscape ? 6 : 12,
+                    16,
+                    isLandscape ? 2 : 4,
+                  ),
+                  child: _ProgressSummary(
+                    completed: completedCount,
+                    total: widget.rounds.length,
+                  ),
                 ),
               ),
-            ),
 
-            // Round grid
-            SliverPadding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
+              // Round grid
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate((context, index) {
                     final round = widget.rounds[index];
                     final unlocked = _progress.isRoundUnlocked(
-                        widget.theme, round.roundIndex);
+                      widget.theme,
+                      round.roundIndex,
+                    );
                     final completed = _progress.isRoundCompleted(
-                        widget.theme, round.roundIndex);
+                      widget.theme,
+                      round.roundIndex,
+                    );
                     return _StaggerIn(
                       index: index,
                       child: _RoundCard(
                         round: round,
                         isUnlocked: unlocked,
                         isCompleted: completed,
-                        gradientColors:
-                            widget.gradientForRound(round.roundIndex),
+                        gradientColors: widget.gradientForRound(
+                          round.roundIndex,
+                        ),
                         minFreq: minFreq,
                         maxFreq: maxFreq,
                         onTap: () => _onRoundTap(round),
                       ),
                     );
-                  },
-                  childCount: widget.rounds.length,
-                ),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.1,
+                  }, childCount: widget.rounds.length),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: isLandscape ? 8 : 12,
+                    crossAxisSpacing: isLandscape ? 8 : 12,
+                    childAspectRatio: childAspectRatio,
+                  ),
                 ),
               ),
-            ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
         ),
       ),
     );
@@ -325,8 +382,10 @@ class _StaggerInState extends State<_StaggerIn>
       duration: const Duration(milliseconds: 380),
     );
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.12),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     Future.delayed(Duration(milliseconds: 40 * widget.index), () {
       if (mounted) _ctrl.forward();
     });
@@ -385,8 +444,8 @@ class _DifficultyDots extends StatelessWidget {
               color: !unlocked
                   ? const Color(0xFF3A2515)
                   : isFilled
-                      ? const Color(0xFFFFD98C)
-                      : Colors.white.withValues(alpha: 0.25),
+                  ? const Color(0xFFFFD98C)
+                  : Colors.white.withValues(alpha: 0.25),
             ),
           ),
         );
@@ -432,8 +491,10 @@ class _RoundCardState extends State<_RoundCard>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.93)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.93,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -449,6 +510,14 @@ class _RoundCardState extends State<_RoundCard>
     final completed = widget.isCompleted;
     final gradientColors = widget.gradientColors;
 
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    final padding = isLandscape ? 8.0 : 12.0;
+    final circleSize = isLandscape ? 28.0 : 36.0;
+    final circleFontSize = isLandscape ? 14.0 : 17.0;
+    final titleFontSize = isLandscape ? 13.0 : 15.0;
+    final checkIconSize = isLandscape ? 18.0 : 22.0;
+
     return GestureDetector(
       onTapDown: (_) {
         if (unlocked) _ctrl.forward();
@@ -463,7 +532,7 @@ class _RoundCardState extends State<_RoundCard>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(isLandscape ? 14 : 18),
             gradient: unlocked
                 ? LinearGradient(
                     begin: Alignment.topLeft,
@@ -485,7 +554,7 @@ class _RoundCardState extends State<_RoundCard>
                       blurRadius: 16,
                       spreadRadius: 2,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ]
                 : null,
           ),
@@ -493,7 +562,7 @@ class _RoundCardState extends State<_RoundCard>
             children: [
               // Main content
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(padding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -502,8 +571,8 @@ class _RoundCardState extends State<_RoundCard>
                     Row(
                       children: [
                         Container(
-                          width: 36,
-                          height: 36,
+                          width: circleSize,
+                          height: circleSize,
                           decoration: BoxDecoration(
                             color: unlocked
                                 ? Colors.white.withValues(alpha: 0.2)
@@ -518,15 +587,18 @@ class _RoundCardState extends State<_RoundCard>
                                     ? Colors.white
                                     : const Color(0xFF4A3320),
                                 fontWeight: FontWeight.w900,
-                                fontSize: 17,
+                                fontSize: circleFontSize,
                               ),
                             ),
                           ),
                         ),
                         const Spacer(),
                         if (completed)
-                          const Icon(Icons.check_circle_rounded,
-                              color: Color(0xFF76FF03), size: 22),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: const Color(0xFF76FF03),
+                            size: checkIconSize,
+                          ),
                       ],
                     ),
 
@@ -541,11 +613,11 @@ class _RoundCardState extends State<_RoundCard>
                                 ? Colors.white
                                 : const Color(0xFF4A3320),
                             fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                            letterSpacing: 1.5,
+                            fontSize: titleFontSize,
+                            letterSpacing: isLandscape ? 1.0 : 1.5,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: isLandscape ? 2 : 4),
                         Row(
                           children: [
                             Icon(
@@ -609,8 +681,10 @@ class _RoundCardState extends State<_RoundCard>
                   right: 10,
                   bottom: 10,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.28),
                       borderRadius: BorderRadius.circular(20),
@@ -635,8 +709,11 @@ class _RoundCardState extends State<_RoundCard>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lock_rounded,
-                              color: Color(0xFF8A6A3F), size: 26),
+                          const Icon(
+                            Icons.lock_rounded,
+                            color: Color(0xFF8A6A3F),
+                            size: 26,
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             '${round.roundIndex - 1}-nji turu geç',

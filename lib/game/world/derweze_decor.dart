@@ -12,6 +12,7 @@ class _DerwezePlacement {
     required this.type,
     required this.x,
     required this.groundY,
+    required this.angle,
     required this.scale,
     required this.flip,
   });
@@ -19,6 +20,7 @@ class _DerwezePlacement {
   final _DerwezeDecorType type;
   final double x;
   final double groundY;
+  final double angle;
   final double scale;
   final bool flip;
 }
@@ -81,6 +83,7 @@ class DerwezeDecorComponent extends Component {
       type: _DerwezeDecorType.sign,
       x: 18.0,
       groundY: -terrain.heightAt(18.0),
+      angle: terrain.getGroundAngle(18.0),
       scale: 1.0,
       flip: false,
     ));
@@ -94,6 +97,7 @@ class DerwezeDecorComponent extends Component {
           type: _DerwezeDecorType.crater,
           x: nextCraterX,
           groundY: -terrain.heightAt(nextCraterX),
+          angle: 0.0,
           scale: 1.0,
           flip: false,
         ));
@@ -121,15 +125,37 @@ class DerwezeDecorComponent extends Component {
         type = _DerwezeDecorType.dog;
       }
 
-      final groundY = -terrain.heightAt(curX);
+      double decorX = curX;
+      double groundAngle = terrain.getGroundAngle(decorX);
+
+      // Prefer flatter ground for wide structures like yurts so they sit flush
+      if ((type == _DerwezeDecorType.yurt || type == _DerwezeDecorType.ojak) &&
+          groundAngle.abs() > 0.18) {
+        double bestX = decorX;
+        double minAngle = groundAngle.abs();
+        for (double dx = -5.0; dx <= 5.0; dx += 1.0) {
+          final candX = curX + dx;
+          if (terrain.isInsideBridgeSpan(candX, extraMargin: 8.0)) continue;
+          final candAngle = terrain.getGroundAngle(candX).abs();
+          if (candAngle < minAngle) {
+            minAngle = candAngle;
+            bestX = candX;
+          }
+        }
+        decorX = bestX;
+        groundAngle = terrain.getGroundAngle(decorX);
+      }
+
+      final groundY = -terrain.heightAt(decorX);
       final scale = 0.85 + _rand.nextDouble() * 0.35;
       final flip = _rand.nextBool();
 
       _placements.add(
         _DerwezePlacement(
           type: type,
-          x: curX,
+          x: decorX,
           groundY: groundY,
+          angle: groundAngle,
           scale: scale,
           flip: flip,
         ),
@@ -193,6 +219,7 @@ class DerwezeDecorComponent extends Component {
 
       canvas.save();
       canvas.translate(p.x, p.groundY);
+      canvas.rotate(p.angle);
       if (p.flip) canvas.scale(-1, 1);
       sprite.render(
         canvas,

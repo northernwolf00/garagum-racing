@@ -293,11 +293,20 @@ class _MenuScreenState extends State<MenuScreen>
 
           // Content Layout
           SafeArea(
-            child: Column(
-              children: [
-                // Top bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        children: [
+                          // Top bar
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 8),
                   child: Row(
                     children: [
                       const Spacer(),
@@ -664,6 +673,11 @@ class _MenuScreenState extends State<MenuScreen>
               ],
             ),
           ),
+        ),
+      );
+    },
+  ),
+),
         ],
       ),
     );

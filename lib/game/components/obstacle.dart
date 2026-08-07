@@ -203,22 +203,27 @@ class ObstacleComponent extends BodyComponent {
     final halfW = dims.x / 2;
     final halfH = dims.y / 2;
 
-    // Only terrain-like features (ramps, mounds, and solid blocks the car
+    // Only terrain-like features (ramps, mounds, cracks, and solid blocks the car
     // must climb rather than shove) are static.
     final isStatic = type == ObstacleType.sandMound ||
         type == ObstacleType.sandRamp ||
         type == ObstacleType.rockBig ||
+        type == ObstacleType.rockSmall ||
         type == ObstacleType.speedBump ||
         type == ObstacleType.pothole ||
         type == ObstacleType.metalRamp ||
         type == ObstacleType.concreteBlock ||
         type == ObstacleType.barrier ||
         type == ObstacleType.ykGayaUly ||
+        type == ObstacleType.ykGayaKici ||
         type == ObstacleType.ykOpurylanGaya ||
         type == ObstacleType.ykGumDepejik ||
+        type == ObstacleType.ykCukur ||
         type == ObstacleType.dwDasUly ||
+        type == ObstacleType.dwDasKici ||
         type == ObstacleType.dwGumTramplin ||
-        type == ObstacleType.dwGazTurbasy;
+        type == ObstacleType.dwGazTurbasy ||
+        type == ObstacleType.dwCukur;
 
     final bodyDef = BodyDef(
       type: isStatic ? BodyType.static : BodyType.dynamic,
@@ -236,7 +241,13 @@ class ObstacleComponent extends BodyComponent {
     if (type == ObstacleType.rockBig ||
         type == ObstacleType.rockSmall ||
         type == ObstacleType.concreteBlock ||
-        type == ObstacleType.barrier) {
+        type == ObstacleType.barrier ||
+        type == ObstacleType.ykGayaUly ||
+        type == ObstacleType.ykGayaKici ||
+        type == ObstacleType.ykOpurylanGaya ||
+        type == ObstacleType.dwDasUly ||
+        type == ObstacleType.dwDasKici ||
+        type == ObstacleType.dwGazTurbasy) {
       // Sloped trapezoid shape so car wheels can climb over smoothly instead of hitting a vertical wall
       final vertices = [
         Vector2(-halfW, halfH),
@@ -247,7 +258,10 @@ class ObstacleComponent extends BodyComponent {
       shape = PolygonShape()..set(vertices);
     } else if (type == ObstacleType.sandMound ||
         type == ObstacleType.speedBump ||
-        type == ObstacleType.pothole) {
+        type == ObstacleType.pothole ||
+        type == ObstacleType.ykGumDepejik ||
+        type == ObstacleType.ykCukur ||
+        type == ObstacleType.dwCukur) {
       // Smooth mound trapezoid
       final vertices = [
         Vector2(-halfW, halfH),
@@ -256,7 +270,9 @@ class ObstacleComponent extends BodyComponent {
         Vector2(-halfW * 0.3, -halfH),
       ];
       shape = PolygonShape()..set(vertices);
-    } else if (type == ObstacleType.sandRamp || type == ObstacleType.metalRamp) {
+    } else if (type == ObstacleType.sandRamp ||
+        type == ObstacleType.metalRamp ||
+        type == ObstacleType.dwGumTramplin) {
       // Smooth jump ramp (slope from left to right)
       final vertices = [
         Vector2(-halfW, halfH),
