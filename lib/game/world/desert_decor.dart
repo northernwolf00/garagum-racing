@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../garagum_racing_game.dart';
 import 'terrain.dart';
 
 enum _DecorType { camel, yurt }
@@ -33,7 +34,8 @@ class _DecorPlacement {
 /// Added to the world after [Terrain] but before obstacles/coins/car, so it
 /// renders on top of the sand texture and behind everything the player can
 /// actually interact with.
-class DesertDecorComponent extends Component {
+class DesertDecorComponent extends Component
+    with HasGameReference<GaragumRacingGame> {
   DesertDecorComponent({required this.terrain, required int seed})
       : _rand = math.Random(seed);
 
@@ -113,6 +115,10 @@ class DesertDecorComponent extends Component {
   @override
   void render(Canvas canvas) {
     for (final p in _placements) {
+      // Off-screen decor is skipped (margin covers the widest sprite).
+      if (p.x < game.visibleWorldLeft - 4 || p.x > game.visibleWorldRight + 4) {
+        continue;
+      }
       final isYurt = p.type == _DecorType.yurt;
       final sprite = isYurt ? _yurtSprite : _camelSprite;
       final tileSize = (isYurt ? _yurtSizeM : _camelSizeM) * p.scale;

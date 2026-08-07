@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../garagum_racing_game.dart';
 import 'terrain.dart';
 
 enum _DecorType { building, streetProp }
@@ -37,7 +38,8 @@ class _DecorPlacement {
 /// after [Terrain] but before obstacles/coins/car, so it renders on top of
 /// the road texture and behind everything the player can actually interact
 /// with.
-class AshgabatDecorComponent extends Component {
+class AshgabatDecorComponent extends Component
+    with HasGameReference<GaragumRacingGame> {
   AshgabatDecorComponent({required this.terrain, required int seed})
       : _rand = math.Random(seed);
 
@@ -146,6 +148,11 @@ class AshgabatDecorComponent extends Component {
   @override
   void render(Canvas canvas) {
     for (final p in _placements) {
+      // Off-screen decor is skipped (wide margin — buildings are large).
+      if (p.x < game.visibleWorldLeft - 12 ||
+          p.x > game.visibleWorldRight + 12) {
+        continue;
+      }
       final isBuilding = p.type == _DecorType.building;
       final sprite = isBuilding
           ? _buildingSprites[p.spriteIndex]

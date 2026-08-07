@@ -59,8 +59,8 @@ class _GameOverScreenState extends State<GameOverScreen>
   void _restart() {
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) => const GaragumLevelsScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 400),
@@ -72,8 +72,8 @@ class _GameOverScreenState extends State<GameOverScreen>
   void _goMenu() {
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const MenuScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) => const MenuScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 400),
@@ -172,7 +172,7 @@ class _GameOverScreenState extends State<GameOverScreen>
                           Border.all(color: const Color(0x44E8A33D), width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFE8601A).withOpacity(0.08),
+                          color: const Color(0xFFE8601A).withValues(alpha: 0.08),
                           blurRadius: 40,
                           spreadRadius: 5,
                         ),
@@ -260,7 +260,7 @@ class _DustPainter extends CustomPainter {
       final y = ((i * 89.7) % 100) / 100 * size.height;
       final r = 0.5 + (i % 4) * 0.7;
       final opacity = 0.04 + (i % 6) * 0.025;
-      paint.color = const Color(0xFFFF8C1A).withOpacity(opacity);
+      paint.color = const Color(0xFFFF8C1A).withValues(alpha: opacity);
       canvas.drawCircle(Offset(x, y), r, paint);
     }
   }
@@ -292,7 +292,7 @@ class _StatRow extends StatelessWidget {
           icon,
           width: 28,
           height: 28,
-          errorBuilder: (_, __, ___) => Icon(
+          errorBuilder: (_, _, _) => Icon(
             fallbackIcon,
             color: const Color(0xFFE8A33D),
             size: 28,
@@ -398,7 +398,7 @@ class _GameOverButtonState extends State<_GameOverButton>
             boxShadow: widget.primary
                 ? [
                     BoxShadow(
-                      color: const Color(0xFFE85A00).withOpacity(0.4),
+                      color: const Color(0xFFE85A00).withValues(alpha: 0.4),
                       blurRadius: 20,
                       offset: const Offset(0, 6),
                     ),

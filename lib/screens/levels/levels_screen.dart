@@ -73,8 +73,8 @@ class _LevelsScreenState extends State<LevelsScreen>
     }
     navigator.pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const MenuScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
+        pageBuilder: (_, animation, _) => const MenuScreen(),
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 400),
       ),
@@ -86,8 +86,8 @@ class _LevelsScreenState extends State<LevelsScreen>
     Navigator.of(context)
         .push(
           PageRouteBuilder(
-            pageBuilder: (_, animation, __) => RaceScreen(roundConfig: round),
-            transitionsBuilder: (_, animation, __, child) =>
+            pageBuilder: (_, animation, _) => RaceScreen(roundConfig: round),
+            transitionsBuilder: (_, animation, _, child) =>
                 FadeTransition(opacity: animation, child: child),
             transitionDuration: const Duration(milliseconds: 400),
           ),
@@ -261,7 +261,7 @@ class _CoinBadge extends StatelessWidget {
             'assets/images/ui/coin.png',
             width: 20,
             height: 20,
-            errorBuilder: (_, __, ___) => const Icon(
+            errorBuilder: (_, _, _) => const Icon(
               Icons.monetization_on,
               color: Color(0xFFFFD700),
               size: 20,

@@ -7,6 +7,7 @@ import 'package:vector_math/vector_math_64.dart' show Matrix4;
 
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
+import '../garagum_racing_game.dart';
 
 /// Struct representing a bridge span along the x-axis.
 class BridgeSpan {
@@ -29,7 +30,7 @@ class Terrain extends BodyComponent {
     RoundConfig? roundConfig,
     this.theme = MapTheme.garagum,
   })  : segmentCount = roundConfig != null
-            ? ((roundConfig.distanceMeters + 60.0) / 0.35).ceil().clamp(500, 8000)
+            ? ((roundConfig.distanceMeters + 60.0) / 0.35).ceil().clamp(500, 16000)
             : 3000,
         super(renderBody: false) {
     // Ashgabat is a paved city street — no canals/bridges, so its span
@@ -54,8 +55,15 @@ class Terrain extends BodyComponent {
   static const double _fillDepthMeters = 60.0;
 
   late final List<Vector2> groundPoints;
-  late final ui.Path _fillPath;
-  late final ui.Path _topPath;
+
+  /// Ground render paths, split into fixed-width chunks along x so [render]
+  /// can draw only the chunks inside the camera view. A single path spanning
+  /// the whole round (up to ~5.5 km ≈ 16k vertices) would be re-tessellated
+  /// by Skia every frame even though only ~40 m of it is ever visible.
+  static const int _chunkSegments = 100;
+  final List<ui.Path> _fillChunks = [];
+  final List<ui.Path> _topChunks = [];
+  late final double _chunkWidth;
   late final ui.Paint _fillPaint;
   late final ui.Paint _topPaint;
 
@@ -231,43 +239,66 @@ class Terrain extends BodyComponent {
   }
 
   void _buildPaths() {
-    _fillPath = ui.Path();
-    _topPath = ui.Path();
-
+    _chunkWidth = _chunkSegments * segmentWidth;
     if (groundPoints.isEmpty) return;
 
-    final first = groundPoints.first;
-    _fillPath.moveTo(first.x, first.y);
-
-    for (int i = 1; i < groundPoints.length; i++) {
-      _fillPath.lineTo(groundPoints[i].x, groundPoints[i].y);
-    }
-
-    final last = groundPoints.last;
+    // One shared bottom edge for every fill chunk, so adjacent chunks join
+    // along the same horizontal line with no visible seams.
     final minY = groundPoints.map((p) => p.y).reduce(min);
     final bottomY = minY + _fillDepthMeters;
 
-    _fillPath.lineTo(last.x, bottomY);
-    _fillPath.lineTo(first.x, bottomY);
-    _fillPath.close();
+    for (int start = 0; start < groundPoints.length - 1;
+        start += _chunkSegments) {
+      // Overlap by one point with the next chunk so surfaces stay continuous.
+      final end = min(start + _chunkSegments, groundPoints.length - 1);
 
-    final p0 = groundPoints.first;
-    _topPath.moveTo(p0.x, p0.y);
-    for (int i = 1; i < groundPoints.length; i++) {
-      _topPath.lineTo(groundPoints[i].x, groundPoints[i].y);
+      final fill = ui.Path()..moveTo(groundPoints[start].x, groundPoints[start].y);
+      for (int i = start + 1; i <= end; i++) {
+        fill.lineTo(groundPoints[i].x, groundPoints[i].y);
+      }
+      fill.lineTo(groundPoints[end].x, bottomY);
+      fill.lineTo(groundPoints[start].x, bottomY);
+      fill.close();
+      _fillChunks.add(fill);
+
+      final top = ui.Path()..moveTo(groundPoints[start].x, groundPoints[start].y);
+      for (int i = start + 1; i <= end; i++) {
+        top.lineTo(groundPoints[i].x, groundPoints[i].y);
+      }
+      for (int i = end; i >= start; i--) {
+        top.lineTo(
+          groundPoints[i].x,
+          groundPoints[i].y + _topStripHeightMeters,
+        );
+      }
+      top.close();
+      _topChunks.add(top);
     }
-    for (int i = groundPoints.length - 1; i >= 0; i--) {
-      _topPath.lineTo(
-        groundPoints[i].x,
-        groundPoints[i].y + _topStripHeightMeters,
-      );
-    }
-    _topPath.close();
   }
 
   @override
   void render(ui.Canvas canvas) {
-    canvas.drawPath(_fillPath, _fillPaint);
-    canvas.drawPath(_topPath, _topPaint);
+    if (_fillChunks.isEmpty) return;
+
+    var first = 0;
+    var last = _fillChunks.length - 1;
+    final g = game;
+    // The visible range starts as ±infinity until the game's first full
+    // update tick — floor()/ceil() on an infinite double would throw.
+    if (g is GaragumRacingGame &&
+        g.visibleWorldLeft.isFinite &&
+        g.visibleWorldRight.isFinite) {
+      first = ((g.visibleWorldLeft) / _chunkWidth)
+          .floor()
+          .clamp(0, _fillChunks.length - 1);
+      last = ((g.visibleWorldRight) / _chunkWidth)
+          .ceil()
+          .clamp(0, _fillChunks.length - 1);
+    }
+
+    for (int i = first; i <= last; i++) {
+      canvas.drawPath(_fillChunks[i], _fillPaint);
+      canvas.drawPath(_topChunks[i], _topPaint);
+    }
   }
 }

@@ -5,6 +5,8 @@ import 'package:flame/components.dart' hide Matrix4;
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:vector_math/vector_math_64.dart' show Matrix4;
 
+import '../garagum_racing_game.dart';
+
 /// Represents a physical bridge span crossing a canal water channel.
 /// Provides Box2D static collision for the bridge deck surface and renders
 /// bridge components (pillars, deck texture, entrance/exit gates, railings,
@@ -104,6 +106,12 @@ class BridgeComponent extends BodyComponent {
 
   @override
   void render(Canvas canvas) {
+    // Whole bridge is off-screen — skip its six render passes entirely.
+    final g = game;
+    if (g is GaragumRacingGame &&
+        (endX + 3 < g.visibleWorldLeft || startX - 3 > g.visibleWorldRight)) {
+      return;
+    }
     _renderCanalWater(canvas);
     _renderPillars(canvas);
     _renderBridgeDeck(canvas);

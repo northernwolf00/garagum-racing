@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../garagum_racing_game.dart';
 import 'terrain.dart';
 
 enum _YangykalaDecorType { pillar, arch, yurt, camel, sheep, sazak }
@@ -26,7 +27,8 @@ class _DecorPlacement {
 }
 
 /// Canyon cliffs and desert scenery for Ýaňňykala.
-class YangykalaDecorComponent extends Component {
+class YangykalaDecorComponent extends Component
+    with HasGameReference<GaragumRacingGame> {
   YangykalaDecorComponent({required this.terrain, required int seed})
       : _rand = math.Random(seed);
 
@@ -122,6 +124,10 @@ class YangykalaDecorComponent extends Component {
   @override
   void render(Canvas canvas) {
     for (final p in _placements) {
+      // Off-screen decor is skipped (margin covers the widest sprite).
+      if (p.x < game.visibleWorldLeft - 6 || p.x > game.visibleWorldRight + 6) {
+        continue;
+      }
       Sprite sprite;
       Vector2 size;
 

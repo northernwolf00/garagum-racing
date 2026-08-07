@@ -235,6 +235,10 @@ class Car extends Component with HasGameReference {
       angularDamping: 1.5,
     );
     final body = _world.createBody(bodyDef);
+    // Forge2D only dispatches ContactCallbacks when *both* bodies carry a
+    // non-null userData — without this, coins/canisters never see the car
+    // in beginContact and can't tell it apart from a rolling obstacle.
+    body.userData = this;
     body.createFixture(
       FixtureDef(shape, density: 1.1, friction: 0.4, restitution: 0.05),
     );
@@ -245,6 +249,7 @@ class Car extends Component with HasGameReference {
     final shape = CircleShape()..radius = wheelRadius;
     final bodyDef = BodyDef(type: BodyType.dynamic, position: position);
     final body = _world.createBody(bodyDef);
+    body.userData = this;
     body.createFixture(
       FixtureDef(
         shape,

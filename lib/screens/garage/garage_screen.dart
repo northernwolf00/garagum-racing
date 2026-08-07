@@ -197,7 +197,7 @@ class _GarageScreenState extends State<GarageScreen>
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color(0xFFE8601A)
-                                        .withOpacity(0.2),
+                                        .withValues(alpha: 0.2),
                                     blurRadius: 60,
                                     spreadRadius: 20,
                                   ),
@@ -210,7 +210,7 @@ class _GarageScreenState extends State<GarageScreen>
                               height: 20,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(100),
-                                color: Colors.black.withOpacity(0.4),
+                                color: Colors.black.withValues(alpha: 0.4),
                               ),
                             ),
                             // Car image (body + both wheels composited,
@@ -229,7 +229,7 @@ class _GarageScreenState extends State<GarageScreen>
                                 width: 280,
                                 height: 140,
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.7),
+                                  color: Colors.black.withValues(alpha: 0.7),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Column(
@@ -245,7 +245,7 @@ class _GarageScreenState extends State<GarageScreen>
                                           'assets/images/ui/coin.png',
                                           width: 18,
                                           height: 18,
-                                          errorBuilder: (_, __, ___) =>
+                                          errorBuilder: (_, _, _) =>
                                               const Icon(Icons.monetization_on,
                                                   color: Color(0xFFFFD98C),
                                                   size: 18),
@@ -456,7 +456,7 @@ class _StatBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(3),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF8C1A).withOpacity(0.5),
+                        color: const Color(0xFFFF8C1A).withValues(alpha: 0.5),
                         blurRadius: 4,
                       ),
                     ],
@@ -519,7 +519,7 @@ class _ActionButton extends StatelessWidget {
           boxShadow: primary
               ? [
                   BoxShadow(
-                    color: const Color(0xFFE85A00).withOpacity(0.4),
+                    color: const Color(0xFFE85A00).withValues(alpha: 0.4),
                     blurRadius: 20,
                     offset: const Offset(0, 6),
                   ),
@@ -571,7 +571,7 @@ class _CoinDisplay extends StatelessWidget {
             'assets/images/ui/coin.png',
             width: 18,
             height: 18,
-            errorBuilder: (_, __, ___) => const Icon(
+            errorBuilder: (_, _, _) => const Icon(
               Icons.monetization_on,
               color: Color(0xFFFFD98C),
               size: 18,
@@ -633,7 +633,7 @@ class _VehiclePreview extends StatelessWidget {
           child: Image.asset(
             wheelAsset,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),
         );
 
@@ -650,7 +650,7 @@ class _VehiclePreview extends StatelessWidget {
             width: width,
             height: height,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(
+            errorBuilder: (_, _, _) => const Icon(
               Icons.directions_car,
               size: 100,
               color: Color(0xFFE8A33D),

@@ -5,9 +5,13 @@ import 'package:flutter/services.dart';
 
 import '../game/garagum_racing_game.dart';
 import '../game/input/pedal_button.dart';
+import '../models/map_theme.dart';
 import '../models/round_config.dart';
 import '../services/game_progress_service.dart';
+import 'levels/ashgabat_levels_screen.dart';
+import 'levels/derweze_levels_screen.dart';
 import 'levels/garagum_levels_screen.dart';
+import 'levels/yangykala_levels_screen.dart';
 import 'menu/menu_screen.dart';
 
 /// Race screen. Receives [roundConfig] which controls distance, coin count
@@ -78,9 +82,17 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _hudCtrl.forward();
   }
 
+  void _stopAndCleanupGame() {
+    _isNavigatingAway = true;
+    _game.isNavigatingAway = true;
+    _game.audio.stopAll();
+    _game.audio.dispose();
+    _game.pauseEngine();
+  }
+
   @override
   void dispose() {
-    _game.audio.dispose();
+    _stopAndCleanupGame();
     _hudCtrl.dispose();
     super.dispose();
   }
@@ -140,25 +152,24 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     setState(() => _paused = !_paused);
     if (_paused) {
       _game.pauseEngine();
+      _game.audio.pauseEngine();
     } else {
       _game.resumeEngine();
+      _game.audio.resumeEngine();
     }
   }
 
   void _goToMenu() {
     if (_isNavigatingAway) return;
-    _isNavigatingAway = true;
-    _game.audio.stopEngine();
-    _game.audio.dispose();
-    _game.pauseEngine();
+    _stopAndCleanupGame();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const MenuScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
+        pageBuilder: (_, animation, _) => const MenuScreen(),
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ),
@@ -166,20 +177,30 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _getLevelsScreenForTheme() {
+    switch (_round.theme) {
+      case MapTheme.ashgabat:
+        return const AshgabatLevelsScreen();
+      case MapTheme.yangykala:
+        return const YangykalaLevelsScreen();
+      case MapTheme.derweze:
+        return const DerwezeLevelsScreen();
+      case MapTheme.garagum:
+        return const GaragumLevelsScreen();
+    }
+  }
+
   void _goToLevels() {
     if (_isNavigatingAway) return;
-    _isNavigatingAway = true;
-    _game.audio.stopEngine();
-    _game.audio.dispose();
-    _game.pauseEngine();
+    _stopAndCleanupGame();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
+        pageBuilder: (_, animation, _) => _getLevelsScreenForTheme(),
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ),
@@ -189,17 +210,14 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
 
   void _restart() {
     if (_isNavigatingAway) return;
-    _isNavigatingAway = true;
-    _game.audio.stopEngine();
-    _game.audio.dispose();
-    _game.pauseEngine();
+    _stopAndCleanupGame();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => RaceScreen(roundConfig: _round),
+        pageBuilder: (_, animation, _) => RaceScreen(roundConfig: _round),
         transitionDuration: Duration.zero,
       ),
     );
@@ -209,191 +227,201 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final double currentThrottle = _game.throttleInput;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // ── Game canvas ──────────────────────────────────────────────
-          Positioned.fill(
-            child: GameWidget<GaragumRacingGame>(
-              game: _game,
-              loadingBuilder: (context) => Container(
-                color: const Color(0xFF140A03),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFFFF8C00),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        _stopAndCleanupGame();
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            // ── Game canvas ──────────────────────────────────────────────
+            Positioned.fill(
+              child: GameWidget<GaragumRacingGame>(
+                game: _game,
+                loadingBuilder: (context) => Container(
+                  color: const Color(0xFF140A03),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFFFF8C00),
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'ÝÜKLENÝÄR...',
-                        style: TextStyle(
-                          color: Color(0xFFFFD98C),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3,
-                          decoration: TextDecoration.none,
+                        SizedBox(height: 16),
+                        Text(
+                          'ÝÜKLENÝÄR...',
+                          style: TextStyle(
+                            color: Color(0xFFFFD98C),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 3,
+                            decoration: TextDecoration.none,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
-          // ── HUD fade-in ──────────────────────────────────────────────
-          FadeTransition(
-            opacity: _hudFade,
-            child: Stack(
-              children: [
-                // ── Top Left Stack (Fuel, Coins, Distance) ─────────────
-                Positioned(
-                  top: 12,
-                  left: 16,
-                  child: SafeArea(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Fuel bar — driven by ValueNotifier, no setState
-                        ValueListenableBuilder<double>(
-                          valueListenable: _game.fuelNotifier,
-                          builder: (_, level, __) => _FuelBar(level: level),
-                        ),
-                        const SizedBox(height: 6),
-                        // Coin counter — driven by ValueNotifier
-                        ValueListenableBuilder<int>(
-                          valueListenable: _game.coinNotifier,
-                          builder: (_, count, __) => _CoinCounter(
-                            collected: count,
-                            required: _round.requiredCoins,
-                            total: _round.totalCoins,
+            // ── HUD fade-in ──────────────────────────────────────────────
+            FadeTransition(
+              opacity: _hudFade,
+              child: Stack(
+                children: [
+                  // ── Top Left Stack (Fuel, Coins, Distance) ─────────────
+                  Positioned(
+                    top: 12,
+                    left: 16,
+                    child: SafeArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Fuel bar — driven by ValueNotifier, no setState
+                          ValueListenableBuilder<double>(
+                            valueListenable: _game.fuelNotifier,
+                            builder: (_, level, _) => _FuelBar(level: level),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Distance progress (rebuilt only with setState on crash/finish)
-                        _DistanceCounter(
-                          current: _game.distance,
-                          goal: _round.distanceMeters,
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          // Coin counter — driven by ValueNotifier
+                          ValueListenableBuilder<int>(
+                            valueListenable: _game.coinNotifier,
+                            builder: (_, count, _) => _CoinCounter(
+                              collected: count,
+                              required: _round.requiredCoins,
+                              total: _round.totalCoins,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          // Distance progress — driven by ValueNotifier so it
+                          // ticks up live instead of waiting for a setState
+                          ValueListenableBuilder<int>(
+                            valueListenable: _game.distanceNotifier,
+                            builder: (_, meters, _) => _DistanceCounter(
+                              current: meters.toDouble(),
+                              goal: _round.distanceMeters,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Top Right (Pause Button + Round Label) ─────────────
-                Positioned(
-                  top: 12,
-                  right: 16,
-                  child: SafeArea(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _PauseButton(onTap: _togglePause),
-                        const SizedBox(height: 6),
-                        _RoundLabel(
-                          roundIndex: _round.roundIndex,
-                          totalRounds: RoundConfig.totalRoundsFor(_round.theme),
-                        ),
-                      ],
+                  // ── Top Right (Pause Button + Round Label) ─────────────
+                  Positioned(
+                    top: 12,
+                    right: 16,
+                    child: SafeArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          _PauseButton(onTap: _togglePause),
+                          const SizedBox(height: 6),
+                          _RoundLabel(
+                            roundIndex: _round.roundIndex,
+                            totalRounds: RoundConfig.totalRoundsFor(_round.theme),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Bottom Center (RPM & Boost Gauges) ─────────────────
-                Positioned(
-                  bottom: 12,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: _DashboardGauges(
-                      throttle: currentThrottle,
-                      brakePressed: _brakePressed,
-                      gasPressed: _gasPressed,
+                  // ── Bottom Center (RPM & Boost Gauges) ─────────────────
+                  Positioned(
+                    bottom: 12,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: _DashboardGauges(
+                        throttle: currentThrottle,
+                        brakePressed: _brakePressed,
+                        gasPressed: _gasPressed,
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Bottom Left (Brake Pedal) ──────────────────────────
-                Positioned(
-                  left: 20,
-                  bottom: 12,
-                  child: PedalButton(
-                    width: 90,
-                    assetPath: 'assets/images/ui/pedal_brake.png',
-                    pressedAssetPath:
-                        'assets/images/ui/pedal_brake_pressed.png',
-                    onPressedChanged: (pressed) {
-                      setState(() => _brakePressed = pressed);
-                      _updateThrottle();
-                      if (pressed) _game.audio.playButtonClick();
-                    },
+                  // ── Bottom Left (Brake Pedal) ──────────────────────────
+                  Positioned(
+                    left: 20,
+                    bottom: 12,
+                    child: PedalButton(
+                      width: 90,
+                      assetPath: 'assets/images/ui/pedal_brake.png',
+                      pressedAssetPath:
+                          'assets/images/ui/pedal_brake_pressed.png',
+                      onPressedChanged: (pressed) {
+                        setState(() => _brakePressed = pressed);
+                        _updateThrottle();
+                        if (pressed) _game.audio.playButtonClick();
+                      },
+                    ),
                   ),
-                ),
 
-                // ── Bottom Right (Gas Pedal) ───────────────────────────
-                Positioned(
-                  right: 20,
-                  bottom: 12,
-                  child: PedalButton(
-                    width: 90,
-                    assetPath: 'assets/images/ui/pedal_gas.png',
-                    pressedAssetPath: 'assets/images/ui/pedal_gas_pressed.png',
-                    onPressedChanged: (pressed) {
-                      setState(() => _gasPressed = pressed);
-                      _updateThrottle();
-                      if (pressed) _game.audio.playButtonClick();
-                    },
+                  // ── Bottom Right (Gas Pedal) ───────────────────────────
+                  Positioned(
+                    right: 20,
+                    bottom: 12,
+                    child: PedalButton(
+                      width: 90,
+                      assetPath: 'assets/images/ui/pedal_gas.png',
+                      pressedAssetPath: 'assets/images/ui/pedal_gas_pressed.png',
+                      onPressedChanged: (pressed) {
+                        setState(() => _gasPressed = pressed);
+                        _updateThrottle();
+                        if (pressed) _game.audio.playButtonClick();
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Out-of-Fuel overlay ──────────────────────────────────────
-          if (_outOfFuel && !_crashed && !_finished)
-            _OutOfFuelOverlay(
-              onRestart: _restart,
-              onLevels: _goToLevels,
-              onMenu: _goToMenu,
+                ],
+              ),
             ),
 
-          // ── Pause overlay ────────────────────────────────────────────
-          if (_paused)
-            _PauseOverlay(
-              onResume: _togglePause,
-              onRestart: _restart,
-              onMenu: _goToMenu,
-            ),
+            // ── Out-of-Fuel overlay ──────────────────────────────────────
+            if (_outOfFuel && !_crashed && !_finished)
+              _OutOfFuelOverlay(
+                onRestart: _restart,
+                onLevels: _goToLevels,
+                onMenu: _goToMenu,
+              ),
 
-          // ── Crash overlay ─────────────────────────────────────────────
-          if (_crashed && !_finished)
-            _CrashOverlay(
-              distanceMeters: _game.distance,
-              coinsCollected: _game.coinNotifier.value,
-              onRestart: _restart,
-              onLevels: _goToLevels,
-              onMenu: _goToMenu,
-            ),
+            // ── Pause overlay ────────────────────────────────────────────
+            if (_paused)
+              _PauseOverlay(
+                onResume: _togglePause,
+                onRestart: _restart,
+                onMenu: _goToMenu,
+              ),
 
-          // ── Finish overlay ─────────────────────────────────────────────
-          if (_finished)
-            _FinishOverlay(
-              round: _round,
-              coinsCollected: _game.coinNotifier.value,
-              onLevels: _goToLevels,
-              onRestart: _restart,
-              onMenu: _goToMenu,
-            ),
-        ],
+            // ── Crash overlay ─────────────────────────────────────────────
+            if (_crashed && !_finished)
+              _CrashOverlay(
+                distanceMeters: _game.distance,
+                coinsCollected: _game.coinNotifier.value,
+                onRestart: _restart,
+                onLevels: _goToLevels,
+                onMenu: _goToMenu,
+              ),
+
+            // ── Finish overlay ─────────────────────────────────────────────
+            if (_finished)
+              _FinishOverlay(
+                round: _round,
+                coinsCollected: _game.coinNotifier.value,
+                onLevels: _goToLevels,
+                onRestart: _restart,
+                onMenu: _goToMenu,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -450,7 +478,7 @@ class _CoinCounter extends StatelessWidget {
           'assets/images/ui/coin.png',
           width: 20,
           height: 20,
-          errorBuilder: (_, __, ___) => const Icon(
+          errorBuilder: (_, _, _) => const Icon(
             Icons.monetization_on,
             color: Color(0xFFFFD700),
             size: 20,
@@ -489,7 +517,7 @@ class _DistanceCounter extends StatelessWidget {
           'assets/images/ui/icon_distance.png',
           width: 20,
           height: 20,
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (_, _, _) =>
               const Icon(Icons.straighten, color: Colors.white, size: 20),
         ),
         const SizedBox(width: 8),
@@ -532,7 +560,7 @@ class _FuelBar extends StatelessWidget {
           'assets/images/ui/icon_fuel.png',
           width: 22,
           height: 22,
-          errorBuilder: (_, __, ___) => Icon(
+          errorBuilder: (_, _, _) => Icon(
             Icons.local_gas_station,
             color: level > 0.25 ? const Color(0xFFFF3333) : Colors.red,
             size: 22,
@@ -625,7 +653,7 @@ class _PauseButtonState extends State<_PauseButton>
               'assets/images/ui/btn_pause.png',
               width: 26,
               height: 26,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.pause_rounded,
                 color: Colors.white,
                 size: 26,
@@ -711,7 +739,7 @@ class _GaugeWidget extends StatelessWidget {
             width: size,
             height: size,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               width: size,
               height: size,
               decoration: BoxDecoration(
@@ -728,7 +756,7 @@ class _GaugeWidget extends StatelessWidget {
               width: size * 0.75,
               height: size * 0.75,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
+              errorBuilder: (_, _, _) =>
                   Container(width: 2, height: size * 0.35, color: Colors.red),
             ),
           ),
@@ -793,7 +821,7 @@ class _OutOfFuelOverlay extends StatelessWidget {
                       'assets/images/ui/icon_fuel.png',
                       width: 30,
                       height: 30,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.local_gas_station,
                         color: Color(0xFFFF8C00),
                         size: 30,
@@ -1050,7 +1078,7 @@ class _CrashOverlay extends StatelessWidget {
                       'assets/images/ui/coin.png',
                       width: 16,
                       height: 16,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.monetization_on,
                         color: Color(0xFFFFD700),
                         size: 16,
@@ -1278,13 +1306,13 @@ class _FinishOverlayState extends State<_FinishOverlay>
                     children: [
                       AnimatedBuilder(
                         animation: _coinCount,
-                        builder: (_, __) => Row(
+                        builder: (_, _) => Row(
                           children: [
                             Image.asset(
                               'assets/images/ui/coin.png',
                               width: 28,
                               height: 28,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              errorBuilder: (_, _, _) => const Icon(
                                 Icons.monetization_on,
                                 color: Color(0xFFFFD700),
                                 size: 28,

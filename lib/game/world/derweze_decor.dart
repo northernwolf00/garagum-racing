@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../garagum_racing_game.dart';
 import 'terrain.dart';
 
 enum _DerwezeDecorType { yurt, camel, sheep, dog, ojak, sazak, sign, crater }
@@ -26,7 +27,8 @@ class _DerwezePlacement {
 }
 
 /// Scenery and animated Derweze Gas Crater for Derweze map.
-class DerwezeDecorComponent extends Component {
+class DerwezeDecorComponent extends Component
+    with HasGameReference<GaragumRacingGame> {
   DerwezeDecorComponent({required this.terrain, required int seed})
       : _rand = math.Random(seed);
 
@@ -176,8 +178,17 @@ class DerwezeDecorComponent extends Component {
   @override
   void render(Canvas canvas) {
     for (final p in _placements) {
+      // Off-screen decor is skipped. The crater gets a much wider margin:
+      // its glow halo extends far beyond its placement point.
       if (p.type == _DerwezeDecorType.crater) {
+        if (p.x < game.visibleWorldLeft - 30 ||
+            p.x > game.visibleWorldRight + 30) {
+          continue;
+        }
         _renderCrater(canvas, p.x, p.groundY);
+        continue;
+      }
+      if (p.x < game.visibleWorldLeft - 6 || p.x > game.visibleWorldRight + 6) {
         continue;
       }
 

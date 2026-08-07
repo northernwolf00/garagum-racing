@@ -200,8 +200,8 @@ class _MenuScreenState extends State<MenuScreen>
     FlameAudio.bgm.pause();
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => getLevelsScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) => getLevelsScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 400),
@@ -215,8 +215,8 @@ class _MenuScreenState extends State<MenuScreen>
     FlameAudio.bgm.pause();
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const GarageScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) => const GarageScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(1, 0),
@@ -275,7 +275,7 @@ class _MenuScreenState extends State<MenuScreen>
             right: 0,
             child: AnimatedBuilder(
               animation: _duneController,
-              builder: (_, __) =>
+              builder: (_, _) =>
                   _DuneSilhouette(animValue: _duneController.value),
             ),
           ),
@@ -287,7 +287,7 @@ class _MenuScreenState extends State<MenuScreen>
               fit: BoxFit.cover,
               color: Colors.black.withValues(alpha: 0.40),
               colorBlendMode: BlendMode.darken,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
           ),
 
@@ -973,7 +973,7 @@ class _CoinBadge extends StatelessWidget {
             'assets/images/ui/coin.png',
             width: 20,
             height: 20,
-            errorBuilder: (_, __, ___) => const Icon(
+            errorBuilder: (_, _, _) => const Icon(
               Icons.monetization_on,
               color: Color(0xFFFFD98C),
               size: 20,
@@ -1019,7 +1019,7 @@ class _IconBtn extends StatelessWidget {
             assetPath,
             width: 22,
             height: 22,
-            errorBuilder: (_, __, ___) => const Icon(
+            errorBuilder: (_, _, _) => const Icon(
               Icons.volume_up,
               color: Color(0xFFE8A33D),
               size: 22,
@@ -1121,7 +1121,7 @@ class _SettingRow extends StatelessWidget {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: const Color(0xFFFF8C1A),
+          activeThumbColor: const Color(0xFFFF8C1A),
           trackColor: WidgetStateProperty.resolveWith(
             (s) => s.contains(WidgetState.selected)
                 ? const Color(0x55FF8C1A)

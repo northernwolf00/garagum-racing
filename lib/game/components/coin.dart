@@ -5,6 +5,7 @@ import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 
 import '../garagum_racing_game.dart';
+import 'car.dart';
 
 /// A coin pick-up component sitting on the road surface.
 ///
@@ -63,11 +64,17 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    _collect();
+    // Only the player's car may collect — without this check a barrel or
+    // cone knocked into the coin would collect it (sound + counter) too.
+    if (other is Car) _collect();
   }
 
   void _collect() {
     if (_collected) return;
+    final g = game;
+    if (g is GaragumRacingGame) {
+      if (g.isCrashed || g.isFinished || g.isOutOfFuel || g.isNavigatingAway) return;
+    }
     _collected = true;
     onCollected?.call();
     _pendingRemoval = true;
@@ -90,6 +97,7 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
     // Distance-based pickup check against car
     final g = game;
     if (g is GaragumRacingGame) {
+      if (g.isCrashed || g.isFinished || g.isOutOfFuel || g.isNavigatingAway) return;
       final car = g.car;
       if (car != null) {
         final carPos = car.chassisBody.position;
@@ -108,6 +116,13 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
   @override
   void render(Canvas canvas) {
     if (_collected) return;
+    // Skip coins outside the camera view — long rounds place 800+ of them.
+    final g = game;
+    if (g is GaragumRacingGame &&
+        (worldPosition.x < g.visibleWorldLeft ||
+            worldPosition.x > g.visibleWorldRight)) {
+      return;
+    }
     final d = _radius * 2;
     // Squash factor simulates 3-D coin spin (|cos(angle)|)
     final scaleX = math.cos(_spriteAngle).abs().clamp(0.12, 1.0);

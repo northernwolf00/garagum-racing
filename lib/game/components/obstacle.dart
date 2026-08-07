@@ -4,6 +4,8 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 
+import '../garagum_racing_game.dart';
+
 enum ObstacleType {
   sazak,
   rockBig,
@@ -366,6 +368,13 @@ class ObstacleComponent extends BodyComponent {
 
   @override
   void render(Canvas canvas) {
+    // Skip obstacles outside the camera view (dynamic ones can wander, so
+    // cull on the live body position rather than the spawn position).
+    final g = game;
+    if (g is GaragumRacingGame) {
+      final x = body.position.x;
+      if (x < g.visibleWorldLeft || x > g.visibleWorldRight) return;
+    }
     final dims = size;
     _sprite.render(
       canvas,
