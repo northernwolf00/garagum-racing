@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flame/game.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,6 +24,10 @@ class RaceScreen extends StatefulWidget {
 
 class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   late final GaragumRacingGame _game;
+
+  // Low background race theme, kept under the engine sfx. Its own player so
+  // it doesn't collide with the shared FlameAudio.bgm menu channel.
+  AudioPlayer? _raceMusic;
 
   bool _gasPressed = false;
   bool _brakePressed = false;
@@ -76,10 +81,22 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
     _hudFade = CurvedAnimation(parent: _hudCtrl, curve: Curves.easeOut);
     _hudCtrl.forward();
+
+    _startRaceMusic();
+  }
+
+  Future<void> _startRaceMusic() async {
+    try {
+      _raceMusic = await FlameAudio.loop('music/race_theme.ogg', volume: 0.28);
+    } catch (e) {
+      _raceMusic = null;
+    }
   }
 
   @override
   void dispose() {
+    _raceMusic?.stop();
+    _raceMusic?.dispose();
     _game.audio.dispose();
     _hudCtrl.dispose();
     super.dispose();

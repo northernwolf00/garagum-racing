@@ -133,7 +133,9 @@ class _MenuScreenState extends State<MenuScreen>
   Future<void> _startMenuMusic() async {
     if (!_soundOn) return;
     await FlameAudio.bgm.initialize();
-    await FlameAudio.bgm.play('music/menu_theme.mp3', volume: 0.45);
+    // OGG for a seamless loop — MP3 pads the file with silent frames, which
+    // produces an audible gap each time the menu theme repeats (see OKA_MENI.md).
+    await FlameAudio.bgm.play('music/menu_theme.ogg', volume: 0.45);
   }
 
   void _toggleSound() {
