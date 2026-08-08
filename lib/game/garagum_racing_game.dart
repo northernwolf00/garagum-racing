@@ -289,7 +289,7 @@ class GaragumRacingGame extends Forge2DGame {
       _lastCameraPosition.setFrom(camera.viewfinder.position);
 
       try {
-        await audio.init();
+        await audio.init(selectedVehicle.id);
       } catch (e) {
         debugPrint('Error initializing AudioManager: $e');
       }

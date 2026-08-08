@@ -133,7 +133,7 @@ class _MenuScreenState extends State<MenuScreen>
   Future<void> _startMenuMusic() async {
     if (!_soundOn) return;
     await FlameAudio.bgm.initialize();
-    await FlameAudio.bgm.play('music/menu_theme.mp3', volume: 0.45);
+    await FlameAudio.bgm.play('music/menu_theme.ogg', volume: 0.45);
   }
 
   void _toggleSound() {
