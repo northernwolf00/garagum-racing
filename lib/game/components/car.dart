@@ -235,6 +235,9 @@ class Car extends Component with HasGameReference {
       angularDamping: 1.5,
     );
     final body = _world.createBody(bodyDef);
+    // Tag every car body with this Car so pickup sensors (coins, fuel) can
+    // tell a genuine car touch apart from a stray obstacle rolling into them.
+    body.userData = this;
     body.createFixture(
       FixtureDef(shape, density: 1.1, friction: 0.4, restitution: 0.05),
     );
@@ -245,6 +248,7 @@ class Car extends Component with HasGameReference {
     final shape = CircleShape()..radius = wheelRadius;
     final bodyDef = BodyDef(type: BodyType.dynamic, position: position);
     final body = _world.createBody(bodyDef);
+    body.userData = this;
     body.createFixture(
       FixtureDef(
         shape,

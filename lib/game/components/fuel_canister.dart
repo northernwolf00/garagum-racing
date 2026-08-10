@@ -2,8 +2,10 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart';
 
 import '../garagum_racing_game.dart';
+import 'car.dart';
 
 /// A fuel canister pick-up sitting on the road surface.
 ///
@@ -51,12 +53,15 @@ class FuelCanisterComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    _collect();
+    // Only the car picks up fuel — see the note in CoinComponent.beginContact.
+    if (other is! Car) return;
+    _collect(source: 'contact');
   }
 
-  void _collect() {
+  void _collect({required String source}) {
     if (_collected) return;
     _collected = true;
+    debugPrint('[fuel] ⛽ canister collected via $source at $worldPosition');
     onCollected?.call();
     _pendingRemoval = true;
   }
@@ -82,7 +87,7 @@ class FuelCanisterComponent extends BodyComponent with ContactCallbacks {
       if (car != null) {
         final carPos = car.chassisBody.position;
         if (carPos.distanceToSquared(worldPosition) < _pickupRadiusSq) {
-          _collect();
+          _collect(source: 'proximity');
         }
       }
     }

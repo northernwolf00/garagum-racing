@@ -25,10 +25,6 @@ class RaceScreen extends StatefulWidget {
 class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   late final GaragumRacingGame _game;
 
-  // Low background race theme, kept under the engine sfx. Its own player so
-  // it doesn't collide with the shared FlameAudio.bgm menu channel.
-  AudioPlayer? _raceMusic;
-
   bool _gasPressed = false;
   bool _brakePressed = false;
   bool _paused = false;
@@ -64,6 +60,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
       DeviceOrientation.landscapeRight,
     ]);
 
+    // Stop menu background music when game starts
+    FlameAudio.bgm.stop();
+
     _game = GaragumRacingGame(roundConfig: _round);
     _game.onCrash = _onCarCrashed;
     _game.onFinish = _onRoundFinished;
@@ -81,22 +80,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
     _hudFade = CurvedAnimation(parent: _hudCtrl, curve: Curves.easeOut);
     _hudCtrl.forward();
-
-    _startRaceMusic();
-  }
-
-  Future<void> _startRaceMusic() async {
-    try {
-      _raceMusic = await FlameAudio.loop('music/race_theme.ogg', volume: 0.28);
-    } catch (e) {
-      _raceMusic = null;
-    }
   }
 
   @override
   void dispose() {
-    _raceMusic?.stop();
-    _raceMusic?.dispose();
     _game.audio.dispose();
     _hudCtrl.dispose();
     super.dispose();
@@ -156,6 +143,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   void _togglePause() {
     setState(() => _paused = !_paused);
     if (_paused) {
+      _game.setThrottle(0);
+      _game.audio.stopEngine();
       _game.pauseEngine();
     } else {
       _game.resumeEngine();
@@ -226,191 +215,201 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final double currentThrottle = _game.throttleInput;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // ── Game canvas ──────────────────────────────────────────────
-          Positioned.fill(
-            child: GameWidget<GaragumRacingGame>(
-              game: _game,
-              loadingBuilder: (context) => Container(
-                color: const Color(0xFF140A03),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFFFF8C00),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _goToMenu();
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            // ── Game canvas ──────────────────────────────────────────────
+            Positioned.fill(
+              child: GameWidget<GaragumRacingGame>(
+                game: _game,
+                loadingBuilder: (context) => Container(
+                  color: const Color(0xFF140A03),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFFFF8C00),
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'ÝÜKLENÝÄR...',
-                        style: TextStyle(
-                          color: Color(0xFFFFD98C),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3,
-                          decoration: TextDecoration.none,
+                        SizedBox(height: 16),
+                        Text(
+                          'ÝÜKLENÝÄR...',
+                          style: TextStyle(
+                            color: Color(0xFFFFD98C),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 3,
+                            decoration: TextDecoration.none,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
-          // ── HUD fade-in ──────────────────────────────────────────────
-          FadeTransition(
-            opacity: _hudFade,
-            child: Stack(
-              children: [
-                // ── Top Left Stack (Fuel, Coins, Distance) ─────────────
-                Positioned(
-                  top: 12,
-                  left: 16,
-                  child: SafeArea(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Fuel bar — driven by ValueNotifier, no setState
-                        ValueListenableBuilder<double>(
-                          valueListenable: _game.fuelNotifier,
-                          builder: (_, level, __) => _FuelBar(level: level),
-                        ),
-                        const SizedBox(height: 6),
-                        // Coin counter — driven by ValueNotifier
-                        ValueListenableBuilder<int>(
-                          valueListenable: _game.coinNotifier,
-                          builder: (_, count, __) => _CoinCounter(
-                            collected: count,
-                            required: _round.requiredCoins,
-                            total: _round.totalCoins,
+            // ── HUD fade-in ──────────────────────────────────────────────
+            FadeTransition(
+              opacity: _hudFade,
+              child: Stack(
+                children: [
+                  // ── Top Left Stack (Fuel, Coins, Distance) ─────────────
+                  Positioned(
+                    top: 12,
+                    left: 16,
+                    child: SafeArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Fuel bar — driven by ValueNotifier, no setState
+                          ValueListenableBuilder<double>(
+                            valueListenable: _game.fuelNotifier,
+                            builder: (_, level, __) => _FuelBar(level: level),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Distance progress (rebuilt only with setState on crash/finish)
-                        _DistanceCounter(
-                          current: _game.distance,
-                          goal: _round.distanceMeters,
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          // Coin counter — driven by ValueNotifier
+                          ValueListenableBuilder<int>(
+                            valueListenable: _game.coinNotifier,
+                            builder: (_, count, __) => _CoinCounter(
+                              collected: count,
+                              required: _round.requiredCoins,
+                              total: _round.totalCoins,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          // Distance progress (rebuilt only with setState on crash/finish)
+                          _DistanceCounter(
+                            current: _game.distance,
+                            goal: _round.distanceMeters,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Top Right (Pause Button + Round Label) ─────────────
-                Positioned(
-                  top: 12,
-                  right: 16,
-                  child: SafeArea(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _PauseButton(onTap: _togglePause),
-                        const SizedBox(height: 6),
-                        _RoundLabel(
-                          roundIndex: _round.roundIndex,
-                          totalRounds: RoundConfig.totalRoundsFor(_round.theme),
-                        ),
-                      ],
+                  // ── Top Right (Pause Button + Round Label) ─────────────
+                  Positioned(
+                    top: 12,
+                    right: 16,
+                    child: SafeArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          _PauseButton(onTap: _togglePause),
+                          const SizedBox(height: 6),
+                          _RoundLabel(
+                            roundIndex: _round.roundIndex,
+                            totalRounds: RoundConfig.totalRoundsFor(
+                              _round.theme,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Bottom Center (RPM & Boost Gauges) ─────────────────
-                Positioned(
-                  bottom: 12,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: _DashboardGauges(
-                      throttle: currentThrottle,
-                      brakePressed: _brakePressed,
-                      gasPressed: _gasPressed,
+                  // ── Bottom Center (RPM & Boost Gauges) ─────────────────
+                  Positioned(
+                    bottom: 12,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: _DashboardGauges(
+                        throttle: currentThrottle,
+                        brakePressed: _brakePressed,
+                        gasPressed: _gasPressed,
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Bottom Left (Brake Pedal) ──────────────────────────
-                Positioned(
-                  left: 20,
-                  bottom: 12,
-                  child: PedalButton(
-                    width: 90,
-                    assetPath: 'assets/images/ui/pedal_brake.png',
-                    pressedAssetPath:
-                        'assets/images/ui/pedal_brake_pressed.png',
-                    onPressedChanged: (pressed) {
-                      setState(() => _brakePressed = pressed);
-                      _updateThrottle();
-                      if (pressed) _game.audio.playButtonClick();
-                    },
+                  // ── Bottom Left (Brake Pedal) ──────────────────────────
+                  Positioned(
+                    left: 20,
+                    bottom: 12,
+                    child: PedalButton(
+                      width: 90,
+                      assetPath: 'assets/images/ui/pedal_brake.png',
+                      pressedAssetPath:
+                          'assets/images/ui/pedal_brake_pressed.png',
+                      onPressedChanged: (pressed) {
+                        setState(() => _brakePressed = pressed);
+                        _updateThrottle();
+                        if (pressed) _game.audio.playButtonClick();
+                      },
+                    ),
                   ),
-                ),
 
-                // ── Bottom Right (Gas Pedal) ───────────────────────────
-                Positioned(
-                  right: 20,
-                  bottom: 12,
-                  child: PedalButton(
-                    width: 90,
-                    assetPath: 'assets/images/ui/pedal_gas.png',
-                    pressedAssetPath: 'assets/images/ui/pedal_gas_pressed.png',
-                    onPressedChanged: (pressed) {
-                      setState(() => _gasPressed = pressed);
-                      _updateThrottle();
-                      if (pressed) _game.audio.playButtonClick();
-                    },
+                  // ── Bottom Right (Gas Pedal) ───────────────────────────
+                  Positioned(
+                    right: 20,
+                    bottom: 12,
+                    child: PedalButton(
+                      width: 90,
+                      assetPath: 'assets/images/ui/pedal_gas.png',
+                      pressedAssetPath:
+                          'assets/images/ui/pedal_gas_pressed.png',
+                      onPressedChanged: (pressed) {
+                        setState(() => _gasPressed = pressed);
+                        _updateThrottle();
+                        if (pressed) _game.audio.playButtonClick();
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Out-of-Fuel overlay ──────────────────────────────────────
-          if (_outOfFuel && !_crashed && !_finished)
-            _OutOfFuelOverlay(
-              onRestart: _restart,
-              onLevels: _goToLevels,
-              onMenu: _goToMenu,
+                ],
+              ),
             ),
 
-          // ── Pause overlay ────────────────────────────────────────────
-          if (_paused)
-            _PauseOverlay(
-              onResume: _togglePause,
-              onRestart: _restart,
-              onMenu: _goToMenu,
-            ),
+            // ── Out-of-Fuel overlay ──────────────────────────────────────
+            if (_outOfFuel && !_crashed && !_finished)
+              _OutOfFuelOverlay(
+                onRestart: _restart,
+                onLevels: _goToLevels,
+                onMenu: _goToMenu,
+              ),
 
-          // ── Crash overlay ─────────────────────────────────────────────
-          if (_crashed && !_finished)
-            _CrashOverlay(
-              distanceMeters: _game.distance,
-              coinsCollected: _game.coinNotifier.value,
-              onRestart: _restart,
-              onLevels: _goToLevels,
-              onMenu: _goToMenu,
-            ),
+            // ── Pause overlay ────────────────────────────────────────────
+            if (_paused)
+              _PauseOverlay(
+                onResume: _togglePause,
+                onRestart: _restart,
+                onMenu: _goToMenu,
+              ),
 
-          // ── Finish overlay ─────────────────────────────────────────────
-          if (_finished)
-            _FinishOverlay(
-              round: _round,
-              coinsCollected: _game.coinNotifier.value,
-              onLevels: _goToLevels,
-              onRestart: _restart,
-              onMenu: _goToMenu,
-            ),
-        ],
+            // ── Crash overlay ─────────────────────────────────────────────
+            if (_crashed && !_finished)
+              _CrashOverlay(
+                distanceMeters: _game.distance,
+                coinsCollected: _game.coinNotifier.value,
+                onRestart: _restart,
+                onLevels: _goToLevels,
+                onMenu: _goToMenu,
+              ),
+
+            // ── Finish overlay ─────────────────────────────────────────────
+            if (_finished)
+              _FinishOverlay(
+                round: _round,
+                coinsCollected: _game.coinNotifier.value,
+                onLevels: _goToLevels,
+                onRestart: _restart,
+                onMenu: _goToMenu,
+              ),
+          ],
+        ),
       ),
     );
   }

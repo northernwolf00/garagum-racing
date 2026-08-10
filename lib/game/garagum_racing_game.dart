@@ -387,6 +387,7 @@ class GaragumRacingGame extends Forge2DGame {
       coin.onCollected = () {
         _coinsCollected++;
         _safeUpdateCoinNotifier(_coinsCollected);
+        debugPrint('[event] 🪙 COIN #$_coinsCollected → coin_pickup.wav');
         audio.playCoinSound();
       };
       coins.add(coin);
@@ -446,6 +447,8 @@ class GaragumRacingGame extends Forge2DGame {
       _safeUpdateFuelNotifier(
         (fuelNotifier.value + 0.55).clamp(0.0, 1.0),
       ); // refill ~55%
+      debugPrint('[event] ⛽ FUEL pickup → fuel_refill.wav '
+          '(now ${(fuelNotifier.value * 100).round()}%)');
       audio.playFuelSound();
     };
     return canister;
@@ -515,6 +518,7 @@ class GaragumRacingGame extends Forge2DGame {
       if (fuelNotifier.value <= _lowFuelWarningThreshold) {
         if (!_lowFuelWarned) {
           _lowFuelWarned = true;
+          debugPrint('[event] 🔔 LOW FUEL warning → fuel_low_warning.wav');
           audio.playLowFuelWarningSound();
           _spawnEmergencyFuelCanister();
         }
@@ -525,6 +529,7 @@ class GaragumRacingGame extends Forge2DGame {
       // Out of fuel check
       if (fuelNotifier.value <= 0 && !_outOfFuel) {
         _outOfFuel = true;
+        debugPrint('[event] 🛑 OUT OF FUEL → engine stop + out_of_fuel.wav');
         audio.setEngineIntensity(0);
         audio.stopEngine();
         audio.playOutOfFuelSound();
@@ -535,6 +540,7 @@ class GaragumRacingGame extends Forge2DGame {
 
     if (!isCrashed && currentCar.checkCrashed(currentTerrain)) {
       isCrashed = true;
+      debugPrint('[event] 💥 CRASH/FLIP → engine stop + crash.wav');
       audio.setEngineIntensity(0);
       audio.stopEngine();
       audio.playCrashSound();
@@ -544,6 +550,7 @@ class GaragumRacingGame extends Forge2DGame {
     // Check finish line
     if (!_isFinished && !isCrashed && distance >= roundConfig.distanceMeters) {
       _isFinished = true;
+      debugPrint('[event] 🏁 FINISH → engine stop + level_complete.wav');
       audio.setEngineIntensity(0);
       audio.stopEngine();
       audio.playLevelCompleteSound();
