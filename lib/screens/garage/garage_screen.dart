@@ -130,7 +130,9 @@ class _GarageScreenState extends State<GarageScreen>
                             ),
                           ),
                           const Spacer(),
-                          _CoinDisplay(coins: 0),
+                          _CoinDisplay(
+                            coins: GameProgressService.instance.getTotalCoins(),
+                          ),
                         ],
                       ),
                     ),
