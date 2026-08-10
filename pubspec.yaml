@@ -68,6 +68,7 @@ flutter:
     - assets/images/images_derweze/props/
     - assets/images/images_derweze/terrain/
     - assets/images/images_derweze/vehicles/
+    - assets/audio/
     - assets/audio/music/
     - assets/audio/sfx/
 

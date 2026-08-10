@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart';
 
 import '../garagum_racing_game.dart';
 import 'car.dart';
@@ -64,18 +65,18 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    // Only the player's car may collect — without this check a barrel or
-    // cone knocked into the coin would collect it (sound + counter) too.
-    if (other is Car) _collect();
+    // Only the car collects a coin. Without this guard any dynamic body
+    // (e.g. a rock or barrier) rolling into the sensor would "collect" the
+    // coin — playing the pickup sound and bumping the counter while the car
+    // is nowhere near it.
+    if (other is! Car) return;
+    _collect(source: 'contact');
   }
 
-  void _collect() {
+  void _collect({required String source}) {
     if (_collected) return;
-    final g = game;
-    if (g is GaragumRacingGame) {
-      if (g.isCrashed || g.isFinished || g.isOutOfFuel || g.isNavigatingAway) return;
-    }
     _collected = true;
+    debugPrint('[coin] 🪙 collected via $source at $worldPosition');
     onCollected?.call();
     _pendingRemoval = true;
   }
@@ -97,12 +98,11 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
     // Distance-based pickup check against car
     final g = game;
     if (g is GaragumRacingGame) {
-      if (g.isCrashed || g.isFinished || g.isOutOfFuel || g.isNavigatingAway) return;
       final car = g.car;
       if (car != null) {
         final carPos = car.chassisBody.position;
         if (carPos.distanceToSquared(worldPosition) < _pickupRadiusSq) {
-          _collect();
+          _collect(source: 'proximity');
           return;
         }
       }
@@ -116,13 +116,6 @@ class CoinComponent extends BodyComponent with ContactCallbacks {
   @override
   void render(Canvas canvas) {
     if (_collected) return;
-    // Skip coins outside the camera view — long rounds place 800+ of them.
-    final g = game;
-    if (g is GaragumRacingGame &&
-        (worldPosition.x < g.visibleWorldLeft ||
-            worldPosition.x > g.visibleWorldRight)) {
-      return;
-    }
     final d = _radius * 2;
     // Squash factor simulates 3-D coin spin (|cos(angle)|)
     final scaleX = math.cos(_spriteAngle).abs().clamp(0.12, 1.0);

@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart';
 
 import '../garagum_racing_game.dart';
 import 'car.dart';
@@ -52,17 +53,15 @@ class FuelCanisterComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    // Only the player's car may collect — see CoinComponent.beginContact.
-    if (other is Car) _collect();
+    // Only the car picks up fuel — see the note in CoinComponent.beginContact.
+    if (other is! Car) return;
+    _collect(source: 'contact');
   }
 
-  void _collect() {
+  void _collect({required String source}) {
     if (_collected) return;
-    final g = game;
-    if (g is GaragumRacingGame) {
-      if (g.isCrashed || g.isFinished || g.isOutOfFuel || g.isNavigatingAway) return;
-    }
     _collected = true;
+    debugPrint('[fuel] ⛽ canister collected via $source at $worldPosition');
     onCollected?.call();
     _pendingRemoval = true;
   }
@@ -84,12 +83,11 @@ class FuelCanisterComponent extends BodyComponent with ContactCallbacks {
     // Distance-based pickup check against car
     final g = game;
     if (g is GaragumRacingGame) {
-      if (g.isCrashed || g.isFinished || g.isOutOfFuel || g.isNavigatingAway) return;
       final car = g.car;
       if (car != null) {
         final carPos = car.chassisBody.position;
         if (carPos.distanceToSquared(worldPosition) < _pickupRadiusSq) {
-          _collect();
+          _collect(source: 'proximity');
         }
       }
     }
@@ -100,12 +98,6 @@ class FuelCanisterComponent extends BodyComponent with ContactCallbacks {
   @override
   void render(Canvas canvas) {
     if (_collected) return;
-    final g = game;
-    if (g is GaragumRacingGame &&
-        (worldPosition.x < g.visibleWorldLeft ||
-            worldPosition.x > g.visibleWorldRight)) {
-      return;
-    }
     final d = _radius * 2;
     _sprite.render(
       canvas,

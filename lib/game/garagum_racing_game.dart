@@ -1,7 +1,9 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
@@ -35,15 +37,8 @@ class GaragumRacingGame extends Forge2DGame {
 
   static const Color _skyColor = Color(0xFFFCE2A6);
   static const double _cameraFollowRate = 6;
-  static const double _cameraLookAheadRate = 1.8;
   static const double _spawnClearance = 3;
   static const double _spawnX = 6;
-
-  /// Extra world-meters kept renderable on either side of the camera view,
-  /// so sprites don't visibly pop in at the screen edge.
-  static const double _cullMargin = 6.0;
-
-  double _cameraLookAhead = 0.0;
 
   /// Upper bound on the per-frame timestep fed to the Forge2D solver.
   /// Flutter's frame ticker keeps running real wall-clock time while the
@@ -86,13 +81,6 @@ class GaragumRacingGame extends Forge2DGame {
 
   bool _lowFuelWarned = false;
 
-  /// Once the tank is empty the car keeps coasting on momentum; the
-  /// out-of-fuel overlay only fires when it has (nearly) stopped, or after
-  /// this many seconds at most (e.g. stuck rolling back and forth in a dip).
-  static const double _maxOutOfFuelCoastSeconds = 6.0;
-  bool _outOfFuelNotified = false;
-  double _outOfFuelCoastTimer = 0.0;
-
   Terrain? terrain;
   Car? car;
   final AudioManager audio = AudioManager();
@@ -103,10 +91,6 @@ class GaragumRacingGame extends Forge2DGame {
   bool isCrashed = false;
   bool _isFinished = false;
   bool _outOfFuel = false;
-  bool isNavigatingAway = false;
-
-  bool get isFinished => _isFinished;
-  bool get isOutOfFuel => _outOfFuel;
 
   int _coinsCollected = 0;
   int get coinsCollected => _coinsCollected;
@@ -115,17 +99,9 @@ class GaragumRacingGame extends Forge2DGame {
   /// Updating them never calls setState() during build.
   final ValueNotifier<double> fuelNotifier = ValueNotifier(1.0);
   final ValueNotifier<int> coinNotifier = ValueNotifier(0);
-
-  /// Whole meters travelled, for the HUD distance counter. Driven from
-  /// [update] every frame — the HUD widget previously read [distance] only
-  /// when something else triggered a rebuild (a pedal press, pause, crash),
-  /// so the on-screen number sat frozen for most of the run.
   final ValueNotifier<int> distanceNotifier = ValueNotifier(0);
 
-  /// World-space x range currently visible to the camera (plus a small
-  /// margin), refreshed once per frame. Terrain chunks, obstacles, coins,
-  /// canisters, bridges and decor all consult this to skip drawing anything
-  /// off-screen — on long rounds that's hundreds of sprites per frame.
+  static const double _cullMargin = 15.0;
   double visibleWorldLeft = double.negativeInfinity;
   double visibleWorldRight = double.infinity;
 
@@ -148,17 +124,6 @@ class GaragumRacingGame extends Forge2DGame {
       });
     } else {
       fuelNotifier.value = val;
-    }
-  }
-
-  void _safeUpdateDistanceNotifier(int val) {
-    if (WidgetsBinding.instance.schedulerPhase ==
-        SchedulerPhase.persistentCallbacks) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        distanceNotifier.value = val;
-      });
-    } else {
-      distanceNotifier.value = val;
     }
   }
 
@@ -289,7 +254,7 @@ class GaragumRacingGame extends Forge2DGame {
       _lastCameraPosition.setFrom(camera.viewfinder.position);
 
       try {
-        await audio.init(selectedVehicle.id);
+        await audio.init(selectedVehicleId);
       } catch (e) {
         debugPrint('Error initializing AudioManager: $e');
       }
@@ -427,6 +392,7 @@ class GaragumRacingGame extends Forge2DGame {
       coin.onCollected = () {
         _coinsCollected++;
         _safeUpdateCoinNotifier(_coinsCollected);
+        debugPrint('[event] 🪙 COIN #$_coinsCollected → coin_pickup.wav');
         audio.playCoinSound();
       };
       coins.add(coin);
@@ -486,6 +452,8 @@ class GaragumRacingGame extends Forge2DGame {
       _safeUpdateFuelNotifier(
         (fuelNotifier.value + 0.55).clamp(0.0, 1.0),
       ); // refill ~55%
+      debugPrint('[event] ⛽ FUEL pickup → fuel_refill.wav '
+          '(now ${(fuelNotifier.value * 100).round()}%)');
       audio.playFuelSound();
     };
     return canister;
@@ -531,17 +499,7 @@ class GaragumRacingGame extends Forge2DGame {
   }
 
   @override
-  void onRemove() {
-    isNavigatingAway = true;
-    audio.stopAll();
-    audio.dispose();
-    pauseEngine();
-    super.onRemove();
-  }
-
-  @override
   void update(double dt) {
-    if (isNavigatingAway) return;
     final clampedDt = dt > _maxPhysicsDt ? _maxPhysicsDt : dt;
     super.update(clampedDt);
     dt = clampedDt;
@@ -565,6 +523,7 @@ class GaragumRacingGame extends Forge2DGame {
       if (fuelNotifier.value <= _lowFuelWarningThreshold) {
         if (!_lowFuelWarned) {
           _lowFuelWarned = true;
+          debugPrint('[event] 🔔 LOW FUEL warning → fuel_low_warning.wav');
           audio.playLowFuelWarningSound();
           _spawnEmergencyFuelCanister();
         }
@@ -572,29 +531,21 @@ class GaragumRacingGame extends Forge2DGame {
         _lowFuelWarned = false;
       }
 
-      // Out of fuel check — the engine dies immediately, but the "out of
-      // fuel" overlay is deferred (below) until the car actually rolls to a
-      // stop, so momentum can still carry the player across the finish line.
+      // Out of fuel check
       if (fuelNotifier.value <= 0 && !_outOfFuel) {
         _outOfFuel = true;
+        debugPrint('[event] 🛑 OUT OF FUEL → engine stop + out_of_fuel.wav');
         audio.setEngineIntensity(0);
         audio.stopEngine();
         audio.playOutOfFuelSound();
         car?.setThrottle(0);
-      }
-    }
-
-    if (_outOfFuel && !_outOfFuelNotified && !isCrashed && !_isFinished) {
-      _outOfFuelCoastTimer += dt;
-      final speed = currentCar.chassisBody.linearVelocity.length;
-      if (speed < 0.6 || _outOfFuelCoastTimer > _maxOutOfFuelCoastSeconds) {
-        _outOfFuelNotified = true;
         onOutOfFuel?.call();
       }
     }
 
     if (!isCrashed && currentCar.checkCrashed(currentTerrain)) {
       isCrashed = true;
+      debugPrint('[event] 💥 CRASH/FLIP → engine stop + crash.wav');
       audio.setEngineIntensity(0);
       audio.stopEngine();
       audio.playCrashSound();
@@ -604,40 +555,20 @@ class GaragumRacingGame extends Forge2DGame {
     // Check finish line
     if (!_isFinished && !isCrashed && distance >= roundConfig.distanceMeters) {
       _isFinished = true;
+      debugPrint('[event] 🏁 FINISH → engine stop + level_complete.wav');
       audio.setEngineIntensity(0);
       audio.stopEngine();
+      audio.playLevelCompleteSound();
       onFinish?.call();
     }
 
-    // HUD distance (whole meters only, so the notifier fires ~once per meter).
-    final wholeMeters = distance.floor();
-    if (wholeMeters != distanceNotifier.value) {
-      _safeUpdateDistanceNotifier(wholeMeters);
-    }
-
-    // Engine pitch tracks real road speed for a sense of acceleration
-    // (volume alone, set from the pedals, sounds like a constant idle).
-    final roadSpeed = currentCar.chassisBody.linearVelocity.x.abs();
-    final topSpeed = currentCar.maxMotorSpeed * Car.wheelRadius;
-    audio.setEngineSpeed(topSpeed > 0 ? roadSpeed / topSpeed : 0);
+    distanceNotifier.value = distance.floor();
 
     final viewfinder = camera.viewfinder;
     final t = 1 - exp(-_cameraFollowRate * dt);
-
-    // Look-ahead: bias the camera toward where the car is going, so the
-    // player sees the upcoming hill/obstacle instead of empty road behind.
-    // Smoothed independently (slower than the follow) to avoid jitter when
-    // velocity flips sign bouncing over bumps.
-    final lookTarget =
-        (currentCar.chassisBody.linearVelocity.x * 0.35).clamp(-2.0, 6.0);
-    final tLook = 1 - exp(-_cameraLookAheadRate * dt);
-    _cameraLookAhead += (lookTarget - _cameraLookAhead) * tLook;
-
-    final cameraTarget = currentCar.position + Vector2(_cameraLookAhead, -0.8);
     viewfinder.position =
-        viewfinder.position + (cameraTarget - viewfinder.position) * t;
+        viewfinder.position + (currentCar.position - viewfinder.position) * t;
 
-    // Refresh the visible x-range used for render culling.
     final visible = camera.visibleWorldRect;
     visibleWorldLeft = visible.left - _cullMargin;
     visibleWorldRight = visible.right + _cullMargin;

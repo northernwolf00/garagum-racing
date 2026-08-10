@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flame/game.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -63,10 +64,15 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
       DeviceOrientation.landscapeRight,
     ]);
 
+    // Stop menu background music when game starts
+    FlameAudio.bgm.stop();
+
     _game = GaragumRacingGame(roundConfig: _round);
     _game.onCrash = _onCarCrashed;
     _game.onFinish = _onRoundFinished;
     _game.onOutOfFuel = () {
+      _gasPressed = false;
+      _brakePressed = false;
       _saveCoins();
       // Use addPostFrameCallback so setState fires after the current build
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -82,22 +88,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _hudCtrl.forward();
   }
 
-  void _stopAndCleanupGame() {
-    _isNavigatingAway = true;
-    _game.isNavigatingAway = true;
-    _game.audio.stopAll();
-    _game.audio.dispose();
-    _game.pauseEngine();
-  }
-
   @override
   void dispose() {
-    _stopAndCleanupGame();
+    _game.audio.dispose();
     _hudCtrl.dispose();
     super.dispose();
   }
 
   void _updateThrottle() {
+    if (_crashed || _finished || _outOfFuel || _paused || _isNavigatingAway) {
+      _game.setThrottle(0);
+      return;
+    }
     if (_gasPressed == _brakePressed) {
       _game.setThrottle(0);
     } else if (_gasPressed) {
@@ -108,6 +110,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _onCarCrashed() {
+    _gasPressed = false;
+    _brakePressed = false;
     _saveCoins();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _crashed = true);
@@ -115,6 +119,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _onRoundFinished() {
+    _gasPressed = false;
+    _brakePressed = false;
     if (_roundSaved) return;
     _roundSaved = true;
     _saveProgress();
@@ -151,25 +157,30 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   void _togglePause() {
     setState(() => _paused = !_paused);
     if (_paused) {
+      _game.setThrottle(0);
+      _game.audio.stopEngine();
       _game.pauseEngine();
-      _game.audio.pauseEngine();
     } else {
       _game.resumeEngine();
-      _game.audio.resumeEngine();
     }
   }
 
-  void _goToMenu() {
+  Future<void> _goToMenu() async {
     if (_isNavigatingAway) return;
-    _stopAndCleanupGame();
-    SystemChrome.setPreferredOrientations([
+    _isNavigatingAway = true;
+    _game.setThrottle(0);
+    _game.pauseEngine();
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, _) => const MenuScreen(),
-        transitionsBuilder: (_, animation, _, child) =>
+        pageBuilder: (_, animation, __) => const MenuScreen(),
+        transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ),
@@ -177,30 +188,39 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _getLevelsScreenForTheme() {
+  Future<void> _goToLevels() async {
+    if (_isNavigatingAway) return;
+    _isNavigatingAway = true;
+    _game.setThrottle(0);
+    _game.pauseEngine();
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    if (!mounted) return;
+
+    Widget levelsScreen;
     switch (_round.theme) {
-      case MapTheme.ashgabat:
-        return const AshgabatLevelsScreen();
-      case MapTheme.yangykala:
-        return const YangykalaLevelsScreen();
-      case MapTheme.derweze:
-        return const DerwezeLevelsScreen();
       case MapTheme.garagum:
-        return const GaragumLevelsScreen();
+        levelsScreen = const GaragumLevelsScreen();
+        break;
+      case MapTheme.ashgabat:
+        levelsScreen = const AshgabatLevelsScreen();
+        break;
+      case MapTheme.yangykala:
+        levelsScreen = const YangykalaLevelsScreen();
+        break;
+      case MapTheme.derweze:
+        levelsScreen = const DerwezeLevelsScreen();
+        break;
     }
-  }
 
-  void _goToLevels() {
-    if (_isNavigatingAway) return;
-    _stopAndCleanupGame();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, _) => _getLevelsScreenForTheme(),
-        transitionsBuilder: (_, animation, _, child) =>
+        pageBuilder: (_, animation, __) => levelsScreen,
+        transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ),
@@ -208,16 +228,52 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _restart() {
+  Future<void> _restart() async {
     if (_isNavigatingAway) return;
-    _stopAndCleanupGame();
-    SystemChrome.setPreferredOrientations([
+    _isNavigatingAway = true;
+    _game.setThrottle(0);
+    _game.pauseEngine();
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, animation, _) => RaceScreen(roundConfig: _round),
+        pageBuilder: (_, animation, __) => RaceScreen(roundConfig: _round),
+        transitionDuration: Duration.zero,
+      ),
+    );
+  }
+
+  Future<void> _goToNextRound() async {
+    final nextRound = RoundConfig.getRound(_round.theme, _round.roundIndex + 1);
+    if (nextRound == null) {
+      _goToLevels();
+      return;
+    }
+    final unlocked = GameProgressService.instance.isRoundUnlocked(_round.theme, nextRound.roundIndex);
+    if (!unlocked) {
+      _goToLevels();
+      return;
+    }
+
+    if (_isNavigatingAway) return;
+    _isNavigatingAway = true;
+    _game.setThrottle(0);
+    _game.pauseEngine();
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, animation, __) => RaceScreen(roundConfig: nextRound),
         transitionDuration: Duration.zero,
       ),
     );
@@ -228,9 +284,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     final double currentThrottle = _game.throttleInput;
 
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        _stopAndCleanupGame();
+        if (didPop) return;
+        _goToMenu();
       },
       child: Scaffold(
         body: Stack(
@@ -289,27 +346,23 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                           // Fuel bar — driven by ValueNotifier, no setState
                           ValueListenableBuilder<double>(
                             valueListenable: _game.fuelNotifier,
-                            builder: (_, level, _) => _FuelBar(level: level),
+                            builder: (_, level, __) => _FuelBar(level: level),
                           ),
                           const SizedBox(height: 6),
                           // Coin counter — driven by ValueNotifier
                           ValueListenableBuilder<int>(
                             valueListenable: _game.coinNotifier,
-                            builder: (_, count, _) => _CoinCounter(
+                            builder: (_, count, __) => _CoinCounter(
                               collected: count,
                               required: _round.requiredCoins,
                               total: _round.totalCoins,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          // Distance progress — driven by ValueNotifier so it
-                          // ticks up live instead of waiting for a setState
-                          ValueListenableBuilder<int>(
-                            valueListenable: _game.distanceNotifier,
-                            builder: (_, meters, _) => _DistanceCounter(
-                              current: meters.toDouble(),
-                              goal: _round.distanceMeters,
-                            ),
+                          // Distance progress (rebuilt only with setState on crash/finish)
+                          _DistanceCounter(
+                            current: _game.distance,
+                            goal: _round.distanceMeters,
                           ),
                         ],
                       ),
@@ -328,7 +381,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                           const SizedBox(height: 6),
                           _RoundLabel(
                             roundIndex: _round.roundIndex,
-                            totalRounds: RoundConfig.totalRoundsFor(_round.theme),
+                            totalRounds: RoundConfig.totalRoundsFor(
+                              _round.theme,
+                            ),
                           ),
                         ],
                       ),
@@ -359,6 +414,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                       pressedAssetPath:
                           'assets/images/ui/pedal_brake_pressed.png',
                       onPressedChanged: (pressed) {
+                        if (_crashed || _finished || _outOfFuel || _paused || _isNavigatingAway) return;
                         setState(() => _brakePressed = pressed);
                         _updateThrottle();
                         if (pressed) _game.audio.playButtonClick();
@@ -373,8 +429,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                     child: PedalButton(
                       width: 90,
                       assetPath: 'assets/images/ui/pedal_gas.png',
-                      pressedAssetPath: 'assets/images/ui/pedal_gas_pressed.png',
+                      pressedAssetPath:
+                          'assets/images/ui/pedal_gas_pressed.png',
                       onPressedChanged: (pressed) {
+                        if (_crashed || _finished || _outOfFuel || _paused || _isNavigatingAway) return;
                         setState(() => _gasPressed = pressed);
                         _updateThrottle();
                         if (pressed) _game.audio.playButtonClick();
@@ -416,6 +474,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
               _FinishOverlay(
                 round: _round,
                 coinsCollected: _game.coinNotifier.value,
+                onNextLevel: _goToNextRound,
                 onLevels: _goToLevels,
                 onRestart: _restart,
                 onMenu: _goToMenu,
@@ -478,7 +537,7 @@ class _CoinCounter extends StatelessWidget {
           'assets/images/ui/coin.png',
           width: 20,
           height: 20,
-          errorBuilder: (_, _, _) => const Icon(
+          errorBuilder: (_, __, ___) => const Icon(
             Icons.monetization_on,
             color: Color(0xFFFFD700),
             size: 20,
@@ -517,7 +576,7 @@ class _DistanceCounter extends StatelessWidget {
           'assets/images/ui/icon_distance.png',
           width: 20,
           height: 20,
-          errorBuilder: (_, _, _) =>
+          errorBuilder: (_, __, ___) =>
               const Icon(Icons.straighten, color: Colors.white, size: 20),
         ),
         const SizedBox(width: 8),
@@ -560,7 +619,7 @@ class _FuelBar extends StatelessWidget {
           'assets/images/ui/icon_fuel.png',
           width: 22,
           height: 22,
-          errorBuilder: (_, _, _) => Icon(
+          errorBuilder: (_, __, ___) => Icon(
             Icons.local_gas_station,
             color: level > 0.25 ? const Color(0xFFFF3333) : Colors.red,
             size: 22,
@@ -653,7 +712,7 @@ class _PauseButtonState extends State<_PauseButton>
               'assets/images/ui/btn_pause.png',
               width: 26,
               height: 26,
-              errorBuilder: (_, _, _) => const Icon(
+              errorBuilder: (_, __, ___) => const Icon(
                 Icons.pause_rounded,
                 color: Colors.white,
                 size: 26,
@@ -739,7 +798,7 @@ class _GaugeWidget extends StatelessWidget {
             width: size,
             height: size,
             fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => Container(
+            errorBuilder: (_, __, ___) => Container(
               width: size,
               height: size,
               decoration: BoxDecoration(
@@ -756,7 +815,7 @@ class _GaugeWidget extends StatelessWidget {
               width: size * 0.75,
               height: size * 0.75,
               fit: BoxFit.contain,
-              errorBuilder: (_, _, _) =>
+              errorBuilder: (_, __, ___) =>
                   Container(width: 2, height: size * 0.35, color: Colors.red),
             ),
           ),
@@ -821,7 +880,7 @@ class _OutOfFuelOverlay extends StatelessWidget {
                       'assets/images/ui/icon_fuel.png',
                       width: 30,
                       height: 30,
-                      errorBuilder: (_, _, _) => const Icon(
+                      errorBuilder: (_, __, ___) => const Icon(
                         Icons.local_gas_station,
                         color: Color(0xFFFF8C00),
                         size: 30,
@@ -1078,7 +1137,7 @@ class _CrashOverlay extends StatelessWidget {
                       'assets/images/ui/coin.png',
                       width: 16,
                       height: 16,
-                      errorBuilder: (_, _, _) => const Icon(
+                      errorBuilder: (_, __, ___) => const Icon(
                         Icons.monetization_on,
                         color: Color(0xFFFFD700),
                         size: 16,
@@ -1144,6 +1203,7 @@ class _FinishOverlay extends StatefulWidget {
     required this.onLevels,
     required this.onRestart,
     required this.onMenu,
+    this.onNextLevel,
   });
 
   final RoundConfig round;
@@ -1151,6 +1211,7 @@ class _FinishOverlay extends StatefulWidget {
   final VoidCallback onLevels;
   final VoidCallback onRestart;
   final VoidCallback onMenu;
+  final VoidCallback? onNextLevel;
 
   @override
   State<_FinishOverlay> createState() => _FinishOverlayState();
@@ -1306,13 +1367,13 @@ class _FinishOverlayState extends State<_FinishOverlay>
                     children: [
                       AnimatedBuilder(
                         animation: _coinCount,
-                        builder: (_, _) => Row(
+                        builder: (_, __) => Row(
                           children: [
                             Image.asset(
                               'assets/images/ui/coin.png',
                               width: 28,
                               height: 28,
-                              errorBuilder: (_, _, _) => const Icon(
+                              errorBuilder: (_, __, ___) => const Icon(
                                 Icons.monetization_on,
                                 color: Color(0xFFFFD700),
                                 size: 28,
@@ -1416,16 +1477,30 @@ class _FinishOverlayState extends State<_FinishOverlay>
                   // Action Buttons Row (Responsive & Compact)
                   Row(
                     children: [
+                      if (nextUnlocked && widget.onNextLevel != null) ...[
+                        Expanded(
+                          flex: 5,
+                          child: _OverlayBtn(
+                            label: 'INDIKI TUR',
+                            icon: Icons.play_arrow_rounded,
+                            primary: true,
+                            onTap: widget.onNextLevel!,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       Expanded(
+                        flex: 4,
                         child: _OverlayBtn(
                           label: 'TURLAR',
                           icon: Icons.list_rounded,
-                          primary: true,
+                          primary: !nextUnlocked,
                           onTap: widget.onLevels,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Expanded(
+                        flex: 4,
                         child: _OverlayBtn(
                           label: 'TÄZEDEN',
                           icon: Icons.replay_rounded,
@@ -1433,8 +1508,9 @@ class _FinishOverlayState extends State<_FinishOverlay>
                           onTap: widget.onRestart,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Expanded(
+                        flex: 4,
                         child: _OverlayBtn(
                           label: 'MENÝU',
                           icon: Icons.home_rounded,

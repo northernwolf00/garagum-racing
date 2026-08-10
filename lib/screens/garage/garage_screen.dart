@@ -1,3 +1,4 @@
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/vehicle_config.dart';
@@ -19,6 +20,11 @@ class _GarageScreenState extends State<GarageScreen>
   int _selectedVehicle = 0;
   final List<VehicleConfig> _vehicles = VehicleConfig.allVehicles;
 
+  // Dedicated player for the calm garage theme. Kept off the shared
+  // FlameAudio.bgm channel so the menu (which pauses bgm before pushing this
+  // screen) can resume its own theme cleanly when we pop back.
+  AudioPlayer? _garageMusic;
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +33,8 @@ class _GarageScreenState extends State<GarageScreen>
     if (idx >= 0) {
       _selectedVehicle = idx;
     }
+
+    _startGarageMusic();
 
     _entryController = AnimationController(
       vsync: this,
@@ -38,8 +46,19 @@ class _GarageScreenState extends State<GarageScreen>
     _entryController.forward();
   }
 
+  Future<void> _startGarageMusic() async {
+    try {
+      _garageMusic =
+          await FlameAudio.loop('music/garage_theme.ogg', volume: 0.4);
+    } catch (e) {
+      _garageMusic = null;
+    }
+  }
+
   @override
   void dispose() {
+    _garageMusic?.stop();
+    _garageMusic?.dispose();
     _entryController.dispose();
     super.dispose();
   }
@@ -111,7 +130,9 @@ class _GarageScreenState extends State<GarageScreen>
                             ),
                           ),
                           const Spacer(),
-                          _CoinDisplay(coins: 0),
+                          _CoinDisplay(
+                            coins: GameProgressService.instance.getTotalCoins(),
+                          ),
                         ],
                       ),
                     ),

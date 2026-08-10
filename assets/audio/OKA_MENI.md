@@ -23,25 +23,40 @@ gyjak, tüýdük we **dep** (deprek) partiýasy: DUM · tek · DUM tek · tek.
 
 ## sfx/ — hereketlendirijiler (her ulag üçin aýry)
 
-Her ulagyň 3 faýly bar: **start** (bir gezek), **idle** we **rev** (ikisi-de loop).
+Fizika modeli bilen täzeden ýasaldy: **ýanma impulslary → egzoz/kuzow rezonatorlary
+→ turbanyň comb öwüşgini → sorujy şowhun**. Silindrler biri-birinden az-kem
+tapawutlanýar, şonuň üçin boş aýlawda hakyky "brmm-brmm" lüpüldisi eşidilýär.
 
-| Ulag | Häsiýeti |
-|---|---|
-| **uaz** | köne benzin 4 silindr — gödek, pes, ýeňil takyrdyly |
-| **ak_ulag** | döwrebap sedan — arassa, ýumşak, ýokary tonly |
-| **pikap** | dizel — agyr, iň pes, güýçli takyrdy bilen |
-| **buggy** | sport, ýokary aýlawly — hyžžyldyly, iň ýiti |
+Her ulagyň **5 faýly** bar:
 
 ```
-engine_start_<ulag>.wav     otlanma (starter → tutuşma → idle-a düşmek)
-engine_idle_<ulag>.wav      2 s loop — maşyn duran ýerinde işläp durka
-engine_rev_<ulag>.wav       2 s loop — gaza basylanda
-engine_throttle_blip.wav    gysga gaz urgusy (islendik ulaga goşup bolýar)
+engine_start_<ulag>.wav   otlanma: starter → tutuşma → idle-a düşmek (bir gezek)
+engine_idle_<ulag>.wav    LOOP — boş aýlaw (820–1150 rpm), pes we lüpüldili
+engine_mid_<ulag>.wav     LOOP — orta aýlaw (1950–4100 rpm)
+engine_rev_<ulag>.wav     LOOP — ýokary aýlaw (3150–7000 rpm), ýiti
+engine_blip_<ulag>.wav    gysga gaz urgusy: gaz → aýlawyň düşmegi → idle
 ```
 
-**Nädip ulanmaly:** `engine_idle` bilen `engine_rev` ikisini-de bir wagtda loop-da
-goýber, gaz (throttle 0→1) boýunça göwrümlerini çalyş: idle = 1−throttle, rev = throttle.
-Goşmaça, tizlige görä `playbackRate`-i 0.85–1.6 aralygynda üýtget — şonda RPM duýulýar.
+| Ulag | Silindr / aýlaw | Sesiniň häsiýeti |
+|---|---|---|
+| **uaz** | 4 sil. benzin · 820 / 2300 / 3900 | gödek, pes, silindrleri deň işlemeýär, ýeňil takyrdyly |
+| **ak_ulag** | 4 sil. benzin · 870 / 2700 / 4800 | arassa, ýumşak, sesi ýapyk (bogulan egzoz) |
+| **pikap** | 4 sil. dizel · 740 / 1950 / 3150 | iň pes we agyr, güýçli mehaniki takyrdy |
+| **buggy** | ýokary aýlawly · 1150 / 4100 / 7000 | gysga egzoz, hyžžyldyly we ýiti |
+
+**Nähili birleşdirmeli (iň hakyky netije):**
+üç loop-y hem bir wagtda goýber we gaz (throttle 0→1) boýunça göwrümlerini geçir:
+
+| throttle | idle | mid | rev |
+|---|---|---|---|
+| 0.0 | 1.0 | 0 | 0 |
+| 0.5 | 0 | 1.0 | 0 |
+| 1.0 | 0 | 0 | 1.0 |
+
+Aralykda çyzykly garyşdyr (mysal üçin throttle 0.25 → idle 0.5 / mid 0.5).
+Goşmaça, tizlige görä üç loop-yň hem `playbackRate`-ini **0.85–1.5** aralygynda
+üýtget — şonda aýlaw sanynyň üznüksiz üýtgeýşi duýulýar.
+Ulag ýerden üzülende (böküşde) `rev`-e geçir, ýere düşende gysga wagtlyk `blip` goşup bolýar.
 
 ## sfx/ — oýun effektleri
 
