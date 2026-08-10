@@ -38,6 +38,7 @@ class AudioManager {
   double _lastEngineVolume = -1.0;
 
   Future<void> init(String vehicleId) async {
+    await dispose();
     _disposed = false;
     _lastEngineVolume = -1.0;
     _vehicle = _engineVehicles.contains(vehicleId)
@@ -156,6 +157,13 @@ class AudioManager {
       await _idlePlayer?.stop();
       await _midPlayer?.stop();
       await _revPlayer?.stop();
+    } catch (e) {
+      // Silently ignore audio errors
+    }
+  }
+
+  Future<void> stopAllSfx() async {
+    try {
       for (final player in _sfxPool) {
         await player.stop();
       }
@@ -170,6 +178,7 @@ class AudioManager {
     _lastEngineVolume = -1.0;
     try {
       await stopEngine();
+      await stopAllSfx();
       await _idlePlayer?.dispose();
       await _midPlayer?.dispose();
       await _revPlayer?.dispose();

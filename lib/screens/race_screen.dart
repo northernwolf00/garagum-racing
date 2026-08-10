@@ -67,6 +67,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _game.onCrash = _onCarCrashed;
     _game.onFinish = _onRoundFinished;
     _game.onOutOfFuel = () {
+      _gasPressed = false;
+      _brakePressed = false;
       _saveCoins();
       // Use addPostFrameCallback so setState fires after the current build
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -90,6 +92,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _updateThrottle() {
+    if (_crashed || _finished || _outOfFuel || _paused || _isNavigatingAway) {
+      _game.setThrottle(0);
+      return;
+    }
     if (_gasPressed == _brakePressed) {
       _game.setThrottle(0);
     } else if (_gasPressed) {
@@ -100,6 +106,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _onCarCrashed() {
+    _gasPressed = false;
+    _brakePressed = false;
     _saveCoins();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _crashed = true);
@@ -107,6 +115,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   }
 
   void _onRoundFinished() {
+    _gasPressed = false;
+    _brakePressed = false;
     if (_roundSaved) return;
     _roundSaved = true;
     _saveProgress();
@@ -151,16 +161,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _goToMenu() {
+  Future<void> _goToMenu() async {
     if (_isNavigatingAway) return;
     _isNavigatingAway = true;
-    _game.audio.stopEngine();
-    _game.audio.dispose();
+    _game.setThrottle(0);
     _game.pauseEngine();
-    SystemChrome.setPreferredOrientations([
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => const MenuScreen(),
@@ -172,16 +184,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _goToLevels() {
+  Future<void> _goToLevels() async {
     if (_isNavigatingAway) return;
     _isNavigatingAway = true;
-    _game.audio.stopEngine();
-    _game.audio.dispose();
+    _game.setThrottle(0);
     _game.pauseEngine();
-    SystemChrome.setPreferredOrientations([
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
@@ -193,16 +207,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _restart() {
+  Future<void> _restart() async {
     if (_isNavigatingAway) return;
     _isNavigatingAway = true;
-    _game.audio.stopEngine();
-    _game.audio.dispose();
+    _game.setThrottle(0);
     _game.pauseEngine();
-    SystemChrome.setPreferredOrientations([
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, animation, __) => RaceScreen(roundConfig: _round),
@@ -346,6 +362,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                       pressedAssetPath:
                           'assets/images/ui/pedal_brake_pressed.png',
                       onPressedChanged: (pressed) {
+                        if (_crashed || _finished || _outOfFuel || _paused || _isNavigatingAway) return;
                         setState(() => _brakePressed = pressed);
                         _updateThrottle();
                         if (pressed) _game.audio.playButtonClick();
@@ -363,6 +380,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                       pressedAssetPath:
                           'assets/images/ui/pedal_gas_pressed.png',
                       onPressedChanged: (pressed) {
+                        if (_crashed || _finished || _outOfFuel || _paused || _isNavigatingAway) return;
                         setState(() => _gasPressed = pressed);
                         _updateThrottle();
                         if (pressed) _game.audio.playButtonClick();
