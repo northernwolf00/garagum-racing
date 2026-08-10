@@ -248,6 +248,37 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _goToNextRound() async {
+    final nextRound = RoundConfig.getRound(_round.theme, _round.roundIndex + 1);
+    if (nextRound == null) {
+      _goToLevels();
+      return;
+    }
+    final unlocked = GameProgressService.instance.isRoundUnlocked(_round.theme, nextRound.roundIndex);
+    if (!unlocked) {
+      _goToLevels();
+      return;
+    }
+
+    if (_isNavigatingAway) return;
+    _isNavigatingAway = true;
+    _game.setThrottle(0);
+    _game.pauseEngine();
+    await _game.audio.dispose();
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, animation, __) => RaceScreen(roundConfig: nextRound),
+        transitionDuration: Duration.zero,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double currentThrottle = _game.throttleInput;
@@ -443,6 +474,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
               _FinishOverlay(
                 round: _round,
                 coinsCollected: _game.coinNotifier.value,
+                onNextLevel: _goToNextRound,
                 onLevels: _goToLevels,
                 onRestart: _restart,
                 onMenu: _goToMenu,
@@ -1171,6 +1203,7 @@ class _FinishOverlay extends StatefulWidget {
     required this.onLevels,
     required this.onRestart,
     required this.onMenu,
+    this.onNextLevel,
   });
 
   final RoundConfig round;
@@ -1178,6 +1211,7 @@ class _FinishOverlay extends StatefulWidget {
   final VoidCallback onLevels;
   final VoidCallback onRestart;
   final VoidCallback onMenu;
+  final VoidCallback? onNextLevel;
 
   @override
   State<_FinishOverlay> createState() => _FinishOverlayState();
@@ -1443,16 +1477,30 @@ class _FinishOverlayState extends State<_FinishOverlay>
                   // Action Buttons Row (Responsive & Compact)
                   Row(
                     children: [
+                      if (nextUnlocked && widget.onNextLevel != null) ...[
+                        Expanded(
+                          flex: 5,
+                          child: _OverlayBtn(
+                            label: 'INDIKI TUR',
+                            icon: Icons.play_arrow_rounded,
+                            primary: true,
+                            onTap: widget.onNextLevel!,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       Expanded(
+                        flex: 4,
                         child: _OverlayBtn(
                           label: 'TURLAR',
                           icon: Icons.list_rounded,
-                          primary: true,
+                          primary: !nextUnlocked,
                           onTap: widget.onLevels,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Expanded(
+                        flex: 4,
                         child: _OverlayBtn(
                           label: 'TÄZEDEN',
                           icon: Icons.replay_rounded,
@@ -1460,8 +1508,9 @@ class _FinishOverlayState extends State<_FinishOverlay>
                           onTap: widget.onRestart,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Expanded(
+                        flex: 4,
                         child: _OverlayBtn(
                           label: 'MENÝU',
                           icon: Icons.home_rounded,

@@ -35,19 +35,34 @@ class RoundConfig {
   String get subtitle =>
       '${distanceMeters.toInt()} m · $requiredCoins coin gerek';
 
+  /// Returns the round list for a given map theme.
+  static List<RoundConfig> roundsFor(MapTheme theme) {
+    switch (theme) {
+      case MapTheme.garagum:
+        return all;
+      case MapTheme.ashgabat:
+        return ashgabatAll;
+      case MapTheme.yangykala:
+        return yangykalaAll;
+      case MapTheme.derweze:
+        return derwezeAll;
+    }
+  }
+
+  /// Returns the RoundConfig for a specific theme and 1-based roundIndex, or null.
+  static RoundConfig? getRound(MapTheme theme, int roundIndex) {
+    final list = roundsFor(theme);
+    final idx = roundIndex - 1;
+    if (idx >= 0 && idx < list.length) {
+      return list[idx];
+    }
+    return null;
+  }
+
   /// Total round count for a given map — used to cap "unlock next round"
   /// logic and to render "TUR n / total" labels.
   static int totalRoundsFor(MapTheme theme) {
-    switch (theme) {
-      case MapTheme.garagum:
-        return all.length;
-      case MapTheme.ashgabat:
-        return ashgabatAll.length;
-      case MapTheme.yangykala:
-        return yangykalaAll.length;
-      case MapTheme.derweze:
-        return derwezeAll.length;
-    }
+    return roundsFor(theme).length;
   }
 
   static const List<RoundConfig> all = [
