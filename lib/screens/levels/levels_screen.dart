@@ -1,3 +1,4 @@
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -66,6 +67,9 @@ class _LevelsScreenState extends State<LevelsScreen>
   // the stack entirely and leaves a black screen — fall back to pushing the
   // menu instead.
   void _onBack() {
+    try {
+      FlameAudio.play('sfx/button_back.wav', volume: 0.7);
+    } catch (_) {}
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();
@@ -82,7 +86,24 @@ class _LevelsScreenState extends State<LevelsScreen>
   }
 
   void _onRoundTap(RoundConfig round) {
-    if (!_progress.isRoundUnlocked(widget.theme, round.roundIndex)) return;
+    final unlocked = _progress.isRoundUnlocked(widget.theme, round.roundIndex);
+    if (unlocked) {
+      debugPrint('[level] 🔓 Round ${round.roundIndex} selected (UNLOCKED) → playing button_select.wav');
+      try {
+        FlameAudio.play('sfx/button_select.wav', volume: 0.8);
+      } catch (e) {
+        debugPrint('[audio] Error playing button_select.wav: $e');
+      }
+    } else {
+      debugPrint('[level] 🔒 Round ${round.roundIndex} tapped (LOCKED) → playing button_locked.wav');
+      try {
+        FlameAudio.play('sfx/button_locked.wav', volume: 0.8);
+      } catch (e) {
+        debugPrint('[audio] Error playing button_locked.wav: $e');
+      }
+      return;
+    }
+
     Navigator.of(context)
         .push(
           PageRouteBuilder(
