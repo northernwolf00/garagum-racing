@@ -540,12 +540,10 @@ class _RoundCardState extends State<_RoundCard>
     final checkIconSize = isLandscape ? 18.0 : 22.0;
 
     return GestureDetector(
-      onTapDown: (_) {
-        if (unlocked) _ctrl.forward();
-      },
+      onTapDown: (_) => _ctrl.forward(),
       onTapUp: (_) {
         _ctrl.reverse();
-        if (unlocked) widget.onTap();
+        widget.onTap();
       },
       onTapCancel: () => _ctrl.reverse(),
       child: ScaleTransition(
