@@ -6,9 +6,13 @@ import 'package:flutter/services.dart';
 
 import '../game/garagum_racing_game.dart';
 import '../game/input/pedal_button.dart';
+import '../models/map_theme.dart';
 import '../models/round_config.dart';
 import '../services/game_progress_service.dart';
+import 'levels/ashgabat_levels_screen.dart';
+import 'levels/derweze_levels_screen.dart';
 import 'levels/garagum_levels_screen.dart';
+import 'levels/yangykala_levels_screen.dart';
 import 'menu/menu_screen.dart';
 
 /// Race screen. Receives [roundConfig] which controls distance, coin count
@@ -196,9 +200,26 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
       DeviceOrientation.portraitDown,
     ]);
     if (!mounted) return;
+
+    Widget levelsScreen;
+    switch (_round.theme) {
+      case MapTheme.garagum:
+        levelsScreen = const GaragumLevelsScreen();
+        break;
+      case MapTheme.ashgabat:
+        levelsScreen = const AshgabatLevelsScreen();
+        break;
+      case MapTheme.yangykala:
+        levelsScreen = const YangykalaLevelsScreen();
+        break;
+      case MapTheme.derweze:
+        levelsScreen = const DerwezeLevelsScreen();
+        break;
+    }
+
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const GaragumLevelsScreen(),
+        pageBuilder: (_, animation, __) => levelsScreen,
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
