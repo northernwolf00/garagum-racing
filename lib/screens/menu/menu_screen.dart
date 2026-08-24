@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/game_progress_service.dart';
+import '../../services/purchase_service.dart';
+import '../../widgets/ad_banner.dart';
 import '../levels/ashgabat_levels_screen.dart';
 import '../levels/derweze_levels_screen.dart';
 import '../levels/garagum_levels_screen.dart';
@@ -680,6 +682,14 @@ class _MenuScreenState extends State<MenuScreen>
     },
   ),
 ),
+
+          // Bottom banner ad (hidden for no-ads / VIP players)
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AdBannerWidget(),
+          ),
         ],
       ),
     );
@@ -1089,8 +1099,131 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             value: _sfx,
             onChanged: (v) => setState(() => _sfx = v),
           ),
+          const SizedBox(height: 20),
+          const Divider(color: Color(0x22E8A33D), height: 1),
+          const SizedBox(height: 16),
+
+          // Premium / no-ads. The button rebuilds live via the entitlement
+          // notifier: once "remove ads" is owned it turns into a status chip.
+          ValueListenableBuilder<bool>(
+            valueListenable: PurchaseService.instance.noAdsNotifier,
+            builder: (context, noAds, _) {
+              if (noAds || PurchaseService.instance.isVip) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0x2276FF03),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0x5576FF03)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.verified_rounded,
+                          color: Color(0xFF76FF03), size: 20),
+                      SizedBox(width: 10),
+                      Text(
+                        'Reklamasyz — işjeň',
+                        style: TextStyle(
+                          color: Color(0xFF76FF03),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return _SettingsActionButton(
+                label: 'Reklamany aýyr',
+                icon: Icons.block_rounded,
+                primary: true,
+                onTap: () =>
+                    PurchaseService.instance.presentPaywallIfNeeded(
+                  PurchaseService.entitlementNoAds,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _SettingsActionButton(
+            label: 'Satyn alyşy dikelt',
+            icon: Icons.restore_rounded,
+            primary: false,
+            onTap: () async {
+              final ok =
+                  await PurchaseService.instance.restorePurchases();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(ok
+                      ? 'Satyn alyşlar dikeldildi.'
+                      : 'Dikeltmek başartmady.'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+}
+
+class _SettingsActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool primary;
+  final VoidCallback onTap;
+
+  const _SettingsActionButton({
+    required this.label,
+    required this.icon,
+    required this.primary,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: primary
+              ? const LinearGradient(
+                  colors: [Color(0xFFFF8C1A), Color(0xFFE85A00)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: primary ? null : const Color(0x22E8A33D),
+          border: Border.all(
+            color: primary ? const Color(0xFFFFAA44) : const Color(0x44E8A33D),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                color: primary ? Colors.white : const Color(0xFFE8A33D),
+                size: 20),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: primary ? Colors.white : const Color(0xFFE8A33D),
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -26,6 +26,9 @@ dependencies:
   flame_audio: ^2.11.5
   vector_math: ^2.1.4
   shared_preferences: ^2.3.3
+  purchases_flutter: ^10.9.1
+  purchases_ui_flutter: ^10.9.1
+  google_mobile_ads: ^9.1.0
 
 dev_dependencies:
   flutter_test:

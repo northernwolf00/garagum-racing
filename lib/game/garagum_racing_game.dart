@@ -598,4 +598,19 @@ class GaragumRacingGame extends Forge2DGame {
   }
 
   double get throttleInput => _throttleInput;
+
+  /// Re-arms the car after running out of fuel — used by the "watch a rewarded
+  /// ad to continue" flow. Refills the tank, clears the out-of-fuel latch and
+  /// restarts the engine audio so the player can drive on from where they
+  /// stalled. No-op if the car isn't actually out of fuel.
+  Future<void> refuelAndResume() async {
+    if (!_outOfFuel) return;
+    _outOfFuel = false;
+    _lowFuelWarned = false;
+    _safeUpdateFuelNotifier(1.0);
+    // Re-initialise the engine loops (they were stopped when the tank emptied)
+    // and replay the ignition one-shot for a satisfying restart.
+    final vehicleId = GameProgressService.instance.getSelectedVehicle();
+    await audio.init(vehicleId);
+  }
 }

@@ -45,5 +45,19 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- AdMob App ID. Google's official SAMPLE/TEST id — replace with your real
+	     AdMob app id before release. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<!-- Shown in the iOS App Tracking Transparency prompt. -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Bu maglumat size has gyzykly reklamalary görkezmek üçin ulanylýar.</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 </dict>
 </plist>

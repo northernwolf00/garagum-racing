@@ -8,6 +8,7 @@ import '../game/garagum_racing_game.dart';
 import '../game/input/pedal_button.dart';
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
+import '../services/ad_service.dart';
 import '../services/game_progress_service.dart';
 import 'levels/ashgabat_levels_screen.dart';
 import 'levels/derweze_levels_screen.dart';
@@ -36,7 +37,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   bool _finished = false;
   bool _outOfFuel = false;
   bool _roundSaved = false;
-  bool _coinsSaved = false;
+
+  /// How many of this run's collected coins have already been persisted to the
+  /// player's total. [_saveCoins] only ever banks the *unsaved* delta, so it's
+  /// safe to call on every run-ending path — and, crucially, coins collected
+  /// after a "watch an ad to continue" refuel still get saved at the real end.
+  int _savedCoinCount = 0;
+
+  /// One rewarded refuel per run (the out-of-fuel "continue" offer).
+  bool _fuelAdUsed = false;
+
+  /// Set once the finish-screen "2x coins" reward has been granted.
+  bool _coinsDoubled = false;
 
   /// Guards _restart/_goToMenu/_goToLevels against being triggered more
   /// than once. Without this, mashing an overlay button (e.g. "restart"
@@ -74,6 +86,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
       _gasPressed = false;
       _brakePressed = false;
       _saveCoins();
+      AdService.instance.recordRunEnded();
       // Use addPostFrameCallback so setState fires after the current build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _outOfFuel = true);
@@ -113,6 +126,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _gasPressed = false;
     _brakePressed = false;
     _saveCoins();
+    AdService.instance.recordRunEnded();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _crashed = true);
     });
@@ -124,6 +138,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     if (_roundSaved) return;
     _roundSaved = true;
     _saveProgress();
+    AdService.instance.recordRunEnded();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _finished = true);
     });
@@ -135,9 +150,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   /// previously only a full finish saved coins, so a crash or running out
   /// of fuel silently discarded every coin collected that run.
   Future<void> _saveCoins() async {
-    if (_coinsSaved) return;
-    _coinsSaved = true;
-    await GameProgressService.instance.addCoins(_game.coinNotifier.value);
+    final collected = _game.coinNotifier.value;
+    final delta = collected - _savedCoinCount;
+    if (delta <= 0) return;
+    _savedCoinCount = collected;
+    await GameProgressService.instance.addCoins(delta);
   }
 
   /// Only reaching the actual finish line can mark a round completed and
@@ -171,6 +188,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _game.setThrottle(0);
     _game.pauseEngine();
     await _game.audio.dispose();
+    await AdService.instance.maybeShowInterstitial();
     if (!mounted) return;
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -194,6 +212,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _game.setThrottle(0);
     _game.pauseEngine();
     await _game.audio.dispose();
+    await AdService.instance.maybeShowInterstitial();
     if (!mounted) return;
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -277,6 +296,51 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
         transitionDuration: Duration.zero,
       ),
     );
+  }
+
+  /// Out-of-fuel "watch an ad to keep driving" offer. On a completed reward it
+  /// refuels the car and dismisses the overlay so the run continues from where
+  /// it stalled. Allowed once per run.
+  Future<void> _watchAdToContinue() async {
+    if (_fuelAdUsed) return;
+    final shown = await AdService.instance.showRewarded(
+      onReward: () async {
+        _fuelAdUsed = true;
+        await _game.refuelAndResume();
+        if (mounted) setState(() => _outOfFuel = false);
+      },
+    );
+    if (!shown && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reklama häzir taýýar däl, biraz soň synanyş.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Finish-screen "double your coins" offer. On a completed reward it banks a
+  /// second copy of this run's coins to the player's total. Allowed once.
+  Future<void> _watchAdToDoubleCoins() async {
+    if (_coinsDoubled) return;
+    final bonus = _game.coinNotifier.value;
+    if (bonus <= 0) return;
+    final shown = await AdService.instance.showRewarded(
+      onReward: () async {
+        _coinsDoubled = true;
+        await GameProgressService.instance.addCoins(bonus);
+        if (mounted) setState(() {});
+      },
+    );
+    if (!shown && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reklama häzir taýýar däl, biraz soň synanyş.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -446,6 +510,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
             // ── Out-of-Fuel overlay ──────────────────────────────────────
             if (_outOfFuel && !_crashed && !_finished)
               _OutOfFuelOverlay(
+                onWatchAd: _fuelAdUsed ? null : _watchAdToContinue,
                 onRestart: _restart,
                 onLevels: _goToLevels,
                 onMenu: _goToMenu,
@@ -474,6 +539,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
               _FinishOverlay(
                 round: _round,
                 coinsCollected: _game.coinNotifier.value,
+                coinsDoubled: _coinsDoubled,
+                onDoubleCoins: _watchAdToDoubleCoins,
                 onNextLevel: _goToNextRound,
                 onLevels: _goToLevels,
                 onRestart: _restart,
@@ -828,11 +895,15 @@ class _GaugeWidget extends StatelessWidget {
 // ─── Out-of-Fuel Overlay ──────────────────────────────────────────────────────
 
 class _OutOfFuelOverlay extends StatelessWidget {
+  /// Null once the free refuel has already been used this run — the ad button
+  /// is then hidden.
+  final VoidCallback? onWatchAd;
   final VoidCallback onRestart;
   final VoidCallback onLevels;
   final VoidCallback onMenu;
 
   const _OutOfFuelOverlay({
+    required this.onWatchAd,
     required this.onRestart,
     required this.onLevels,
     required this.onMenu,
@@ -910,6 +981,16 @@ class _OutOfFuelOverlay extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
+                // Rewarded "watch an ad to keep driving" — the highest-value
+                // placement, shown once per run.
+                if (onWatchAd != null) ...[
+                  _RewardedAdButton(
+                    label: 'REKLAMA GÖR → DOWAM ET',
+                    icon: Icons.local_gas_station_rounded,
+                    onTap: onWatchAd!,
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 Row(
                   children: [
                     Expanded(
@@ -1200,6 +1281,8 @@ class _FinishOverlay extends StatefulWidget {
   const _FinishOverlay({
     required this.round,
     required this.coinsCollected,
+    required this.coinsDoubled,
+    required this.onDoubleCoins,
     required this.onLevels,
     required this.onRestart,
     required this.onMenu,
@@ -1208,6 +1291,8 @@ class _FinishOverlay extends StatefulWidget {
 
   final RoundConfig round;
   final int coinsCollected;
+  final bool coinsDoubled;
+  final VoidCallback onDoubleCoins;
   final VoidCallback onLevels;
   final VoidCallback onRestart;
   final VoidCallback onMenu;
@@ -1472,6 +1557,47 @@ class _FinishOverlayState extends State<_FinishOverlay>
                     ),
                   ],
 
+                  // Rewarded "double your coins" — offered once, only when
+                  // there are coins to double.
+                  if (widget.coinsCollected > 0) ...[
+                    const SizedBox(height: 12),
+                    if (widget.coinsDoubled)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0x3376FF03),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF76FF03)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded,
+                                color: Color(0xFF76FF03), size: 16),
+                            SizedBox(width: 6),
+                            Text(
+                              'TEŇŇE 2× EDİLDİ!',
+                              style: TextStyle(
+                                color: Color(0xFF76FF03),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      _RewardedAdButton(
+                        label: 'REKLAMA GÖR → TEŇŇÄŇI 2× ET',
+                        icon: Icons.monetization_on_rounded,
+                        onTap: widget.onDoubleCoins,
+                      ),
+                  ],
+
                   const SizedBox(height: 16),
 
                   // Action Buttons Row (Responsive & Compact)
@@ -1524,6 +1650,87 @@ class _FinishOverlayState extends State<_FinishOverlay>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Rewarded Ad Button ───────────────────────────────────────────────────────
+
+/// Full-width call-to-action for opt-in rewarded ads, with a small "AD" badge
+/// so players always know a video is coming. Visually distinct (green→gold)
+/// from the regular navigation buttons.
+class _RewardedAdButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _RewardedAdButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4CAF14), Color(0xFF9CCC00)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: const Color(0xFFCCFF33), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF76FF03).withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'AD',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 0.8,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
