@@ -55,6 +55,10 @@ class AdService {
   bool _loadingInterstitial = false;
   bool _loadingRewarded = false;
 
+  /// The run count for which an interstitial has already been shown, so
+  /// leaving via two different buttons in one run can't show two ads.
+  int _lastInterstitialRun = -1;
+
   bool get _adsSuppressed => PurchaseService.instance.noAds;
 
   Future<void> init() async {
@@ -94,18 +98,26 @@ class AdService {
     );
   }
 
-  /// Records a finished run and, subject to the grace period / cadence and the
-  /// no-ads entitlement, shows an interstitial. Call this when the player
-  /// leaves a result overlay (menu / levels), never mid-game.
-  Future<void> maybeShowInterstitialAfterRun() async {
+  /// Records that a run just ended (crash / finish / out of fuel). Counting is
+  /// kept separate from showing so the ad only ever appears once the player
+  /// dismisses the result overlay, never on top of it.
+  Future<void> recordRunEnded() async {
     final runCount = (_prefs?.getInt(_keyRunCount) ?? 0) + 1;
     await _prefs?.setInt(_keyRunCount, runCount);
+  }
 
+  /// Shows an interstitial if one is due, subject to the grace period, the
+  /// every-Nth-run cadence and the no-ads entitlement. Call this when the
+  /// player leaves a result overlay to the menu / levels — never mid-game.
+  Future<void> maybeShowInterstitial() async {
     if (_adsSuppressed) return;
+    final runCount = _prefs?.getInt(_keyRunCount) ?? 0;
     if (runCount <= _interstitialGracePeriod) return;
     if ((runCount - _interstitialGracePeriod) % _interstitialEveryNRuns != 0) {
       return;
     }
+    if (runCount == _lastInterstitialRun) return; // already shown this run
+    _lastInterstitialRun = runCount;
 
     final ad = _interstitial;
     if (ad == null) {
