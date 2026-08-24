@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 import 'game_progress_service.dart';
 
@@ -149,6 +150,42 @@ class PurchaseService {
         await GameProgressService.instance.addCoins(entry.value);
         return;
       }
+    }
+  }
+
+  /// Presents the RevenueCat paywall (Paywalls v2 — designed on the
+  /// dashboard, no code changes needed to restyle it). Refreshes entitlements
+  /// afterwards. Returns true if the user purchased or restored. No-op (false)
+  /// when RevenueCat isn't configured.
+  Future<bool> presentPaywall() async {
+    if (!_configured) return false;
+    try {
+      final result =
+          await RevenueCatUI.presentPaywall(displayCloseButton: true);
+      await refresh();
+      return result == PaywallResult.purchased ||
+          result == PaywallResult.restored;
+    } catch (e) {
+      debugPrint('[purchase] presentPaywall failed: $e');
+      return false;
+    }
+  }
+
+  /// Presents the paywall only if [entitlementId] isn't already active (e.g.
+  /// don't nag a player who already bought "remove ads").
+  Future<bool> presentPaywallIfNeeded(String entitlementId) async {
+    if (!_configured) return false;
+    try {
+      final result = await RevenueCatUI.presentPaywallIfNeeded(
+        entitlementId,
+        displayCloseButton: true,
+      );
+      await refresh();
+      return result == PaywallResult.purchased ||
+          result == PaywallResult.restored;
+    } catch (e) {
+      debugPrint('[purchase] presentPaywallIfNeeded failed: $e');
+      return false;
     }
   }
 

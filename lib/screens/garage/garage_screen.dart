@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/vehicle_config.dart';
 import '../../services/game_progress_service.dart';
+import '../../widgets/ad_banner.dart';
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
@@ -390,6 +391,14 @@ class _GarageScreenState extends State<GarageScreen>
                 ),
               ),
             ),
+          ),
+
+          // Bottom banner ad (hidden for no-ads / VIP players)
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AdBannerWidget(),
           ),
         ],
       ),

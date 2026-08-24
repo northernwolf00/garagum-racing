@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
 import '../../services/game_progress_service.dart';
+import '../../services/purchase_service.dart';
 import '../menu/menu_screen.dart';
 import '../race_screen.dart';
 
@@ -101,6 +102,10 @@ class _LevelsScreenState extends State<LevelsScreen>
       } catch (e) {
         debugPrint('[audio] Error playing button_locked.wav: $e');
       }
+      // Locked round → surface the store as an upsell (coin packs to progress
+      // faster / premium). No-op until real RevenueCat keys are configured, so
+      // this changes nothing in the current build.
+      PurchaseService.instance.presentPaywall();
       return;
     }
 
