@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'screens/menu/menu_screen.dart';
+import 'services/ad_service.dart';
 import 'services/game_progress_service.dart';
+import 'services/purchase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +13,12 @@ void main() async {
   // (menu coin badge, level unlock state) always reads real persisted data
   // instead of racing an unawaited init and silently writing nothing.
   await GameProgressService.instance.init();
+
+  // Set up purchases first so ad-gating knows the no-ads/VIP entitlement
+  // state, then initialise ads. Both degrade to safe no-ops if their
+  // credentials aren't configured, so neither can block startup.
+  await PurchaseService.instance.init();
+  await AdService.instance.init();
 
   // Lock to portrait before the first frame is shown.
   await SystemChrome.setPreferredOrientations([
