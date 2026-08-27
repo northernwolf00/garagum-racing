@@ -39,27 +39,27 @@ class AdService {
 
   static String get bannerUnitId => _useTestAds
       ? (Platform.isIOS
-          ? 'ca-app-pub-3940256099942544/2934735716'
-          : 'ca-app-pub-3940256099942544/6300978111')
+            ? 'ca-app-pub-3940256099942544/2934735716'
+            : 'ca-app-pub-3940256099942544/6300978111')
       : (Platform.isIOS
-          ? 'ca-app-pub-9512095597042833/8075871458'
-          : 'ca-app-pub-9512095597042833/9878134214');
+            ? 'ca-app-pub-9512095597042833/8075871458'
+            : 'ca-app-pub-9512095597042833/9878134214');
 
   static String get _interstitialUnitId => _useTestAds
       ? (Platform.isIOS
-          ? 'ca-app-pub-3940256099942544/4411468910'
-          : 'ca-app-pub-3940256099942544/1033173712')
+            ? 'ca-app-pub-3940256099942544/4411468910'
+            : 'ca-app-pub-3940256099942544/1033173712')
       : (Platform.isIOS
-          ? 'ca-app-pub-9512095597042833/1640551547'
-          : 'ca-app-pub-9512095597042833/4006483132');
+            ? 'ca-app-pub-9512095597042833/1640551547'
+            : 'ca-app-pub-9512095597042833/4006483132');
 
   static String get _rewardedUnitId => _useTestAds
       ? (Platform.isIOS
-          ? 'ca-app-pub-3940256099942544/1712485313'
-          : 'ca-app-pub-3940256099942544/5224354917')
+            ? 'ca-app-pub-3940256099942544/1712485313'
+            : 'ca-app-pub-3940256099942544/5224354917')
       : (Platform.isIOS
-          ? 'ca-app-pub-9512095597042833/9111847457'
-          : 'ca-app-pub-9512095597042833/3206688158');
+            ? 'ca-app-pub-9512095597042833/9111847457'
+            : 'ca-app-pub-9512095597042833/3206688158');
 
   // ── Interstitial cadence ──────────────────────────────────────────────────
   static const int _interstitialGracePeriod = 5; // no ads for first N runs
@@ -81,6 +81,11 @@ class AdService {
   bool get _adsSuppressed =>
       PurchaseService.instance.noAds ||
       GameProgressService.instance.starterNoAdsActive;
+
+  /// True while a bottom banner is actually on screen. Screens listen to this
+  /// to reserve matching bottom padding so their buttons stay above the banner
+  /// instead of being covered by it.
+  final ValueNotifier<bool> bannerVisible = ValueNotifier(false);
 
   Future<void> init() async {
     if (_initialized) return;
@@ -211,9 +216,7 @@ class AdService {
         _loadRewarded();
       },
     );
-    await ad.show(
-      onUserEarnedReward: (ad, reward) => earned = true,
-    );
+    await ad.show(onUserEarnedReward: (ad, reward) => earned = true);
     return true;
   }
 

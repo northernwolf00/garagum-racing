@@ -708,6 +708,8 @@ class _MenuScreenState extends State<MenuScreen>
                   ),
                 ),
                 const SizedBox(height: 6),
+                // Reserve room so the bottom banner never covers the buttons.
+                AdBannerWidget.bottomReservedSpace(context),
               ],
             ),
           ),
