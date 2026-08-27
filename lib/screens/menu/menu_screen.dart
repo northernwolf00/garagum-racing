@@ -212,6 +212,7 @@ class _MenuScreenState extends State<MenuScreen>
       ),
     ).then((_) {
       if (mounted && _soundOn) FlameAudio.bgm.resume();
+      _refreshCoins();
     });
   }
 
@@ -233,6 +234,7 @@ class _MenuScreenState extends State<MenuScreen>
       ),
     ).then((_) {
       if (mounted && _soundOn) FlameAudio.bgm.resume();
+      _refreshCoins();
     });
   }
 
@@ -242,6 +244,23 @@ class _MenuScreenState extends State<MenuScreen>
       backgroundColor: Colors.transparent,
       builder: (_) => const _SettingsSheet(),
     );
+  }
+
+  void _refreshCoins() {
+    if (mounted) {
+      setState(
+          () => _totalCoins = GameProgressService.instance.getTotalCoins());
+    }
+  }
+
+  Future<void> _onDailyReward() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _DailyRewardSheet(),
+    );
+    _refreshCoins(); // reflect any claimed coins + hide the "claim" dot
   }
 
   @override
@@ -315,6 +334,12 @@ class _MenuScreenState extends State<MenuScreen>
                     children: [
                       const Spacer(),
                       _CoinBadge(coins: _totalCoins),
+                      const SizedBox(width: 8),
+                      _DailyGiftButton(
+                        canClaim:
+                            GameProgressService.instance.canClaimDaily,
+                        onTap: _onDailyReward,
+                      ),
                       const SizedBox(width: 8),
                       _IconBtn(
                         assetPath: _soundOn
@@ -1038,6 +1063,231 @@ class _IconBtn extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Daily Gift Button ───────────────────────────────────────────────────────
+
+/// Top-bar gift button with a red "claim me" dot when today's reward is
+/// available.
+class _DailyGiftButton extends StatelessWidget {
+  const _DailyGiftButton({required this.canClaim, required this.onTap});
+
+  final bool canClaim;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0x44000000),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: canClaim
+                    ? const Color(0xFFFFD700)
+                    : const Color(0x44E8A33D),
+              ),
+            ),
+            child: Icon(
+              Icons.card_giftcard_rounded,
+              color: canClaim
+                  ? const Color(0xFFFFD700)
+                  : const Color(0xFFE8A33D),
+              size: 22,
+            ),
+          ),
+          if (canClaim)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF3B30),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF1C0E06), width: 2),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Daily Reward Sheet ──────────────────────────────────────────────────────
+
+/// Bottom sheet showing the 7-day streak track, today's reward and a claim
+/// button. Claiming credits coins and rebuilds to the "come back tomorrow"
+/// state.
+class _DailyRewardSheet extends StatefulWidget {
+  const _DailyRewardSheet();
+
+  @override
+  State<_DailyRewardSheet> createState() => _DailyRewardSheetState();
+}
+
+class _DailyRewardSheetState extends State<_DailyRewardSheet> {
+  final _progress = GameProgressService.instance;
+  int _claimed = 0;
+
+  Future<void> _claim() async {
+    final reward = await _progress.claimDailyReward();
+    if (!mounted) return;
+    setState(() => _claimed = reward);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canClaim = _progress.canClaimDaily;
+    // Before claiming, highlight the day about to be claimed; after claiming,
+    // highlight the day that was just claimed.
+    final activeDay =
+        canClaim ? _progress.pendingStreakDay : _progress.currentStreakDay;
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C0E06),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0x44E8A33D)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.card_giftcard_rounded,
+              color: Color(0xFFFFD700), size: 40),
+          const SizedBox(height: 10),
+          const Text(
+            'GÜNLÜK SOWGAT',
+            style: TextStyle(
+              color: Color(0xFFFFD98C),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 7-day streak track
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(GameProgressService.streakCap, (i) {
+              final day = i + 1;
+              final reward = GameProgressService.dailyRewards[i];
+              final isToday = day == activeDay;
+              final isPast = day < activeDay;
+              return Container(
+                width: 40,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: isToday
+                      ? const Color(0x33FFD700)
+                      : const Color(0x11FFFFFF),
+                  border: Border.all(
+                    color: isToday
+                        ? const Color(0xFFFFD700)
+                        : Colors.transparent,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '$day',
+                      style: TextStyle(
+                        color: isPast
+                            ? const Color(0xFF44FF88)
+                            : const Color(0xFF886633),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Icon(
+                      isPast
+                          ? Icons.check_circle_rounded
+                          : Icons.card_giftcard_rounded,
+                      color: isToday
+                          ? const Color(0xFFFFD700)
+                          : isPast
+                              ? const Color(0xFF44FF88)
+                              : const Color(0xFF5A4326),
+                      size: 16,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$reward',
+                      style: TextStyle(
+                        color: isToday
+                            ? const Color(0xFFFFD700)
+                            : const Color(0xFF886633),
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 20),
+          if (_claimed > 0)
+            Text(
+              '+$_claimed teňňe alyndy! 🎉',
+              style: const TextStyle(
+                color: Color(0xFF44FF88),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: canClaim ? _claim : null,
+              child: Container(
+                width: double.infinity,
+                height: 52,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: canClaim
+                      ? const LinearGradient(
+                          colors: [Color(0xFFFF8C1A), Color(0xFFE85A00)],
+                        )
+                      : null,
+                  color: canClaim ? null : const Color(0x22E8A33D),
+                  border: Border.all(
+                    color: canClaim
+                        ? const Color(0xFFFFAA44)
+                        : const Color(0x44E8A33D),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    canClaim
+                        ? '${_progress.pendingDailyReward} TEŇŇE AL'
+                        : 'ERTIR ÝENE GEL',
+                    style: TextStyle(
+                      color:
+                          canClaim ? Colors.white : const Color(0xFFE8A33D),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

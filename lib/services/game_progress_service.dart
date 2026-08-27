@@ -173,6 +173,50 @@ class GameProgressService {
     await _prefs?.setInt(_keyStarterNoAdsUntil, until);
   }
 
+  // ── Daily reward + streak ─────────────────────────────────────────────────
+
+  static const String _keyLastDailyClaim = 'daily_last_claim';
+  static const String _keyStreakDay = 'daily_streak';
+  static const int streakCap = 7;
+
+  /// Coin reward for each streak day (1..7). Day 7 is the big payout, which is
+  /// what keeps players coming back a full week.
+  static const List<int> dailyRewards = [500, 800, 1200, 1600, 2200, 3000, 5000];
+
+  String _dayStamp(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
+  /// True if today's daily reward hasn't been claimed yet.
+  bool get canClaimDaily =>
+      _prefs?.getString(_keyLastDailyClaim) != _dayStamp(DateTime.now());
+
+  /// The streak day that claiming right now would land on (1..7): continues
+  /// the run if yesterday was claimed, otherwise resets to 1.
+  int get pendingStreakDay {
+    final last = _prefs?.getString(_keyLastDailyClaim);
+    final yesterday = _dayStamp(DateTime.now().subtract(const Duration(days: 1)));
+    final stored = _prefs?.getInt(_keyStreakDay) ?? 0;
+    if (last == yesterday) return (stored + 1).clamp(1, streakCap);
+    return 1;
+  }
+
+  /// The reward the player would get by claiming now.
+  int get pendingDailyReward => dailyRewards[pendingStreakDay - 1];
+
+  /// The stored streak day (last claimed day's position, 1..7; 0 if never).
+  int get currentStreakDay => _prefs?.getInt(_keyStreakDay) ?? 0;
+
+  /// Claims today's daily reward. Returns the coins granted, or 0 if already
+  /// claimed today.
+  Future<int> claimDailyReward() async {
+    if (!canClaimDaily) return 0;
+    final day = pendingStreakDay;
+    final reward = dailyRewards[day - 1];
+    await _prefs?.setInt(_keyStreakDay, day);
+    await _prefs?.setString(_keyLastDailyClaim, _dayStamp(DateTime.now()));
+    await addCoins(reward);
+    return reward;
+  }
+
   // ── Stars (1–3 per round, best kept) ──────────────────────────────────────
 
   String _starsKey(MapTheme theme, int round) => 'stars_${theme.name}_$round';
