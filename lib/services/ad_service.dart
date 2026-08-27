@@ -19,8 +19,10 @@ import 'purchase_service.dart';
 ///   [_interstitialEveryNRuns]th run. Suppressed when [PurchaseService.noAds].
 /// - Banner   — menu + garage screens only. Suppressed when noAds.
 ///
-/// All ad unit ids below are Google's official **test** ids. Swap them for
-/// the real ids from the AdMob console before release.
+/// The ad unit ids below are the app's **production** AdMob ids. While
+/// developing, add your device to [RequestConfiguration.testDeviceIds] (in
+/// [init]) so you only ever see Google test ads — clicking live ads on your
+/// own device can get the AdMob account suspended.
 class AdService {
   static AdService? _instance;
   static AdService get instance {
@@ -30,18 +32,18 @@ class AdService {
 
   AdService._();
 
-  // ── Test ad unit ids (replace before release) ─────────────────────────────
+  // ── Production ad unit ids (AdMob console) ────────────────────────────────
   static String get bannerUnitId => Platform.isIOS
-      ? 'ca-app-pub-3940256099942544/2934735716'
-      : 'ca-app-pub-3940256099942544/6300978111';
+      ? 'ca-app-pub-9512095597042833/8075871458'
+      : 'ca-app-pub-9512095597042833/9878134214';
 
   static String get _interstitialUnitId => Platform.isIOS
-      ? 'ca-app-pub-3940256099942544/4411468910'
-      : 'ca-app-pub-3940256099942544/1033173712';
+      ? 'ca-app-pub-9512095597042833/1640551547'
+      : 'ca-app-pub-9512095597042833/4006483132';
 
   static String get _rewardedUnitId => Platform.isIOS
-      ? 'ca-app-pub-3940256099942544/1712485313'
-      : 'ca-app-pub-3940256099942544/5224354917';
+      ? 'ca-app-pub-9512095597042833/9111847457'
+      : 'ca-app-pub-9512095597042833/3206688158';
 
   // ── Interstitial cadence ──────────────────────────────────────────────────
   static const int _interstitialGracePeriod = 5; // no ads for first N runs
