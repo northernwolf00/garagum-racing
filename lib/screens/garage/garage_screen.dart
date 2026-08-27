@@ -475,6 +475,9 @@ class _GarageScreenState extends State<GarageScreen>
                     ),
 
                     const SizedBox(height: 24),
+                    // Reserve room so the bottom banner never covers the
+                    // "buy / play" button.
+                    AdBannerWidget.bottomReservedSpace(context),
                   ],
                 ),
               ),

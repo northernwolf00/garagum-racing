@@ -15,6 +15,19 @@ import '../services/purchase_service.dart';
 class AdBannerWidget extends StatefulWidget {
   const AdBannerWidget({super.key});
 
+  /// Bottom spacer that reserves room for the banner only while one is showing,
+  /// so a screen's bottom buttons stay tappable above it. Put it at the end of
+  /// the screen's scroll/column content.
+  static Widget bottomReservedSpace(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdService.instance.bannerVisible,
+      builder: (_, visible, __) => SizedBox(
+        height: visible ? AdSize.banner.height.toDouble() + safeBottom + 8 : 0,
+      ),
+    );
+  }
+
   @override
   State<AdBannerWidget> createState() => _AdBannerWidgetState();
 }
@@ -37,7 +50,10 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
     // Returns null when ads are suppressed (no-ads / VIP).
     _banner = AdService.instance.createBanner(
       onLoaded: () {
-        if (mounted) setState(() => _loaded = true);
+        if (mounted) {
+          setState(() => _loaded = true);
+          AdService.instance.bannerVisible.value = true;
+        }
       },
     );
   }
@@ -50,6 +66,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   void _disposeBanner() {
     _banner?.dispose();
     _banner = null;
+    AdService.instance.bannerVisible.value = false;
   }
 
   @override
