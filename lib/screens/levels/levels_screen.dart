@@ -7,6 +7,7 @@ import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
 import '../../services/game_progress_service.dart';
 import '../../services/purchase_service.dart';
+import '../../widgets/coin_store_sheet.dart';
 import '../menu/menu_screen.dart';
 import '../race_screen.dart';
 
@@ -368,7 +369,13 @@ class _LevelsScreenState extends State<LevelsScreen>
                       top: 8,
                       bottom: 8,
                     ),
-                    child: _CoinBadge(coins: totalCoins),
+                    child: GestureDetector(
+                      onTap: () async {
+                        await showCoinStore(context);
+                        if (mounted) setState(() {});
+                      },
+                      child: _CoinBadge(coins: totalCoins),
+                    ),
                   ),
                 ],
               ),
