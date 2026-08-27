@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'game_progress_service.dart';
 import 'purchase_service.dart';
 
 /// Wraps AdMob (google_mobile_ads): banner, interstitial and rewarded ads.
@@ -59,7 +60,9 @@ class AdService {
   /// leaving via two different buttons in one run can't show two ads.
   int _lastInterstitialRun = -1;
 
-  bool get _adsSuppressed => PurchaseService.instance.noAds;
+  bool get _adsSuppressed =>
+      PurchaseService.instance.noAds ||
+      GameProgressService.instance.starterNoAdsActive;
 
   Future<void> init() async {
     if (_initialized) return;

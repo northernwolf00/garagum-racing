@@ -1,6 +1,7 @@
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 
+import '../../models/upgrade_config.dart';
 import '../../models/vehicle_config.dart';
 import '../../services/game_progress_service.dart';
 import '../../widgets/ad_banner.dart';
@@ -89,6 +90,60 @@ class _GarageScreenState extends State<GarageScreen>
         backgroundColor: const Color(0xFF1C3D06),
       ),
     );
+  }
+
+  Future<void> _buyUpgrade(VehicleConfig v, UpgradeType type) async {
+    final ok = await GameProgressService.instance.buyUpgrade(v.id, type);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ýeterlik teňňe ýok!'),
+          backgroundColor: Color(0xFF3D1A06),
+        ),
+      );
+      return;
+    }
+    setState(() {});
+  }
+
+  double _baseStat(VehicleConfig v, UpgradeType type) {
+    switch (type) {
+      case UpgradeType.engine:
+        return v.engine;
+      case UpgradeType.suspension:
+        return v.suspension;
+      case UpgradeType.tires:
+        return v.tires;
+      case UpgradeType.fuel:
+        return v.fuel;
+    }
+  }
+
+  static const Map<UpgradeType, IconData> _upgradeIcons = {
+    UpgradeType.engine: Icons.bolt,
+    UpgradeType.suspension: Icons.compress,
+    UpgradeType.tires: Icons.circle_outlined,
+    UpgradeType.fuel: Icons.local_gas_station,
+  };
+
+  List<Widget> _buildUpgradeRows(VehicleConfig v) {
+    final rows = <Widget>[];
+    for (final type in UpgradeType.values) {
+      final level = GameProgressService.instance.getUpgradeLevel(v.id, type);
+      final effective = UpgradeConfig.apply(_baseStat(v, type), level);
+      final cost = UpgradeConfig.costToNext(type, level);
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: 10));
+      rows.add(_UpgradeRow(
+        label: type.label.toUpperCase(),
+        icon: _upgradeIcons[type]!,
+        level: level,
+        value: effective,
+        cost: cost,
+        onBuy: cost == null ? null : () => _buyUpgrade(v, type),
+      ));
+    }
+    return rows;
   }
 
   @override
@@ -366,17 +421,21 @@ class _GarageScreenState extends State<GarageScreen>
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _StatBar(label: 'MOTOR', value: vehicle.engine,
-                              icon: Icons.bolt),
-                          const SizedBox(height: 10),
-                          _StatBar(label: 'ASMA', value: vehicle.suspension,
-                              icon: Icons.compress),
-                          const SizedBox(height: 10),
-                          _StatBar(label: 'TEKERLEKLER', value: vehicle.tires,
-                              icon: Icons.circle_outlined),
-                          const SizedBox(height: 10),
-                          _StatBar(label: 'ÝANGYÇ TANKY', value: vehicle.fuel,
-                              icon: Icons.local_gas_station),
+                          if (vehicleOwned)
+                            ..._buildUpgradeRows(vehicle)
+                          else ...[
+                            _StatBar(label: 'MOTOR', value: vehicle.engine,
+                                icon: Icons.bolt),
+                            const SizedBox(height: 10),
+                            _StatBar(label: 'ASMA', value: vehicle.suspension,
+                                icon: Icons.compress),
+                            const SizedBox(height: 10),
+                            _StatBar(label: 'TEKERLEKLER', value: vehicle.tires,
+                                icon: Icons.circle_outlined),
+                            const SizedBox(height: 10),
+                            _StatBar(label: 'ÝANGYÇ TANKY', value: vehicle.fuel,
+                                icon: Icons.local_gas_station),
+                          ],
                         ],
                       ),
                     ),
@@ -524,6 +583,160 @@ class _StatBar extends StatelessWidget {
             color: Color(0xFF886633),
             fontSize: 11,
             fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Upgrade Row ──────────────────────────────────────────────────────────────
+
+/// One upgradeable stat: label, 5 level pips, the current effective bar, and a
+/// buy button showing the next level's cost (or "MAX" when fully upgraded).
+class _UpgradeRow extends StatelessWidget {
+  const _UpgradeRow({
+    required this.label,
+    required this.icon,
+    required this.level,
+    required this.value,
+    required this.cost,
+    required this.onBuy,
+  });
+
+  final String label;
+  final IconData icon;
+  final int level;
+  final double value;
+  final int? cost;
+  final VoidCallback? onBuy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: const Color(0xFF886633)),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 90,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF886633),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: List.generate(UpgradeConfig.maxLevel, (i) {
+                  final filled = i < level;
+                  return Container(
+                    width: 8,
+                    height: 4,
+                    margin: const EdgeInsets.only(right: 2),
+                    decoration: BoxDecoration(
+                      color: filled
+                          ? const Color(0xFFFFD98C)
+                          : const Color(0x33E8A33D),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Stack(
+            children: [
+              Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  color: const Color(0x22E8A33D),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: value.clamp(0.0, 1.0),
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFFF8C1A),
+                        Color.lerp(const Color(0xFFFF8C1A),
+                            const Color(0xFF44FF88), value)!,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Buy button / MAX badge
+        GestureDetector(
+          onTap: onBuy,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 62),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              gradient: cost == null
+                  ? null
+                  : const LinearGradient(
+                      colors: [Color(0xFFFF8C1A), Color(0xFFE85A00)],
+                    ),
+              color: cost == null ? const Color(0x2244FF88) : null,
+              border: Border.all(
+                color: cost == null
+                    ? const Color(0x6644FF88)
+                    : const Color(0xFFFFAA44),
+              ),
+            ),
+            child: cost == null
+                ? const Text(
+                    'MAX',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF44FF88),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/ui/coin.png',
+                        width: 12,
+                        height: 12,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.monetization_on,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$cost',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ],

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/gate_config.dart';
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
+import '../models/upgrade_config.dart';
 
 /// Handles persistent local game progress:
 /// - Total coins collected across all runs (spendable)
@@ -101,6 +102,75 @@ class GameProgressService {
     final toStore =
         owned.where((v) => !_defaultOwnedVehicles.contains(v)).toList();
     await _prefs?.setStringList(_keyOwnedVehicles, toStore);
+  }
+
+  // ── Vehicle upgrades ──────────────────────────────────────────────────────
+
+  String _upgradeKey(String vehicleId, UpgradeType type) =>
+      'upg_${vehicleId}_${type.id}';
+
+  int getUpgradeLevel(String vehicleId, UpgradeType type) =>
+      _prefs?.getInt(_upgradeKey(vehicleId, type)) ?? 0;
+
+  /// Buys the next upgrade level for [type] on [vehicleId]. Returns true on
+  /// success; false if already maxed or the balance is insufficient.
+  Future<bool> buyUpgrade(String vehicleId, UpgradeType type) async {
+    final level = getUpgradeLevel(vehicleId, type);
+    final cost = UpgradeConfig.costToNext(type, level);
+    if (cost == null) return false; // maxed
+    if (!await spendCoins(cost)) return false;
+    await _prefs?.setInt(_upgradeKey(vehicleId, type), level + 1);
+    return true;
+  }
+
+  /// The vehicle's effective 0..1 rating for [type] after its bought upgrades.
+  double effectiveStat(String vehicleId, UpgradeType type, double baseStat) =>
+      UpgradeConfig.apply(baseStat, getUpgradeLevel(vehicleId, type));
+
+  // ── VIP daily coins & Starter pack ────────────────────────────────────────
+
+  static const String _keyLastVipClaim = 'vip_last_claim';
+  static const String _keyStarterNoAdsUntil = 'starter_no_ads_until';
+  static const String _keyStarterGranted = 'starter_granted';
+  static const int vipDailyCoins = 5000;
+
+  String _todayStamp() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month}-${now.day}';
+  }
+
+  /// Grants the VIP daily coin bonus once per calendar day while [isVip].
+  /// Returns the coins granted (0 if not VIP or already claimed today).
+  Future<int> claimVipDailyIfDue(bool isVip) async {
+    if (!isVip) return 0;
+    final today = _todayStamp();
+    if (_prefs?.getString(_keyLastVipClaim) == today) return 0;
+    await _prefs?.setString(_keyLastVipClaim, today);
+    await addCoins(vipDailyCoins);
+    return vipDailyCoins;
+  }
+
+  /// Whether the player has ever bought the starter pack (so the one-time
+  /// offer isn't shown again).
+  bool get starterGranted => _prefs?.getBool(_keyStarterGranted) ?? false;
+
+  /// The 3-day ad-free window granted by the starter pack, still active?
+  bool get starterNoAdsActive {
+    final until = _prefs?.getInt(_keyStarterNoAdsUntil) ?? 0;
+    return DateTime.now().millisecondsSinceEpoch < until;
+  }
+
+  /// Grants the starter pack: 25 000 coins, the UAZ, and a 3-day ad-free
+  /// window. Idempotent — only pays out the first time.
+  Future<void> grantStarterPack() async {
+    if (starterGranted) return;
+    await _prefs?.setBool(_keyStarterGranted, true);
+    await addCoins(25000);
+    await ownVehicle('uaz');
+    final until = DateTime.now()
+        .add(const Duration(days: 3))
+        .millisecondsSinceEpoch;
+    await _prefs?.setInt(_keyStarterNoAdsUntil, until);
   }
 
   // ── Stars (1–3 per round, best kept) ──────────────────────────────────────
