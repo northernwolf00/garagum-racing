@@ -146,6 +146,27 @@ class PurchaseService {
     }
   }
 
+  /// Buys a coin pack by its product id (e.g. `coins_10000`) from the current
+  /// offering. Falls back to showing the full paywall when RevenueCat isn't
+  /// configured or the package can't be found. Returns true on a completed
+  /// purchase.
+  Future<bool> purchaseCoinPackById(String productId) async {
+    if (!_configured) {
+      await presentPaywall();
+      return false;
+    }
+    final offerings = await getOfferings();
+    final packages = offerings?.current?.availablePackages ?? const [];
+    for (final pkg in packages) {
+      if (pkg.storeProduct.identifier.contains(productId)) {
+        return purchasePackage(pkg);
+      }
+    }
+    // Product not found in the current offering — show the paywall instead.
+    await presentPaywall();
+    return false;
+  }
+
   Future<void> _creditConsumableIfNeeded(String productId) async {
     // Store product ids often carry a platform suffix; match by prefix key.
     if (productId.contains(starterPackProductId)) {

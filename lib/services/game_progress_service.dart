@@ -127,6 +127,38 @@ class GameProgressService {
   double effectiveStat(String vehicleId, UpgradeType type, double baseStat) =>
       UpgradeConfig.apply(baseStat, getUpgradeLevel(vehicleId, type));
 
+  // ── Rewarded "watch ad for coins" (coin store) ────────────────────────────
+
+  static const int rewardAdCoins = 300;
+  static const int rewardAdDailyCap = 6;
+  static const String _keyRewardAdDate = 'reward_ad_date';
+  static const String _keyRewardAdCount = 'reward_ad_count';
+
+  /// How many reward-for-coins ads have been claimed today (resets each day).
+  int rewardAdsUsedToday() {
+    if (_prefs?.getString(_keyRewardAdDate) != _dayStamp(DateTime.now())) {
+      return 0;
+    }
+    return _prefs?.getInt(_keyRewardAdCount) ?? 0;
+  }
+
+  int get rewardAdsRemainingToday =>
+      (rewardAdDailyCap - rewardAdsUsedToday()).clamp(0, rewardAdDailyCap);
+
+  bool get canWatchRewardForCoins => rewardAdsRemainingToday > 0;
+
+  /// Grants the coin reward for one watched ad, subject to the daily cap.
+  /// Returns the coins granted (0 if the cap is already reached).
+  Future<int> claimRewardAdCoins() async {
+    final today = _dayStamp(DateTime.now());
+    final used = rewardAdsUsedToday();
+    if (used >= rewardAdDailyCap) return 0;
+    await _prefs?.setString(_keyRewardAdDate, today);
+    await _prefs?.setInt(_keyRewardAdCount, used + 1);
+    await addCoins(rewardAdCoins);
+    return rewardAdCoins;
+  }
+
   // ── VIP daily coins & Starter pack ────────────────────────────────────────
 
   static const String _keyLastVipClaim = 'vip_last_claim';

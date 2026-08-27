@@ -5,6 +5,7 @@ import '../../models/upgrade_config.dart';
 import '../../models/vehicle_config.dart';
 import '../../services/game_progress_service.dart';
 import '../../widgets/ad_banner.dart';
+import '../../widgets/coin_store_sheet.dart';
 
 class GarageScreen extends StatefulWidget {
   const GarageScreen({super.key});
@@ -214,8 +215,15 @@ class _GarageScreenState extends State<GarageScreen>
                             ),
                           ),
                           const Spacer(),
-                          _CoinDisplay(
-                            coins: GameProgressService.instance.getTotalCoins(),
+                          GestureDetector(
+                            onTap: () async {
+                              await showCoinStore(context);
+                              if (mounted) setState(() {});
+                            },
+                            child: _CoinDisplay(
+                              coins: GameProgressService.instance
+                                  .getTotalCoins(),
+                            ),
                           ),
                         ],
                       ),

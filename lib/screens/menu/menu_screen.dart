@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../services/game_progress_service.dart';
 import '../../services/purchase_service.dart';
 import '../../widgets/ad_banner.dart';
+import '../../widgets/coin_store_sheet.dart';
 import '../levels/ashgabat_levels_screen.dart';
 import '../levels/derweze_levels_screen.dart';
 import '../levels/garagum_levels_screen.dart';
@@ -253,6 +254,11 @@ class _MenuScreenState extends State<MenuScreen>
     }
   }
 
+  Future<void> _onCoinStore() async {
+    await showCoinStore(context);
+    _refreshCoins();
+  }
+
   Future<void> _onDailyReward() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -333,7 +339,10 @@ class _MenuScreenState extends State<MenuScreen>
                   child: Row(
                     children: [
                       const Spacer(),
-                      _CoinBadge(coins: _totalCoins),
+                      GestureDetector(
+                        onTap: _onCoinStore,
+                        child: _CoinBadge(coins: _totalCoins),
+                      ),
                       const SizedBox(width: 8),
                       _DailyGiftButton(
                         canClaim:
