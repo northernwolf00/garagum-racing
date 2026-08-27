@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../game/garagum_racing_game.dart';
 import '../game/input/pedal_button.dart';
+import '../models/gate_config.dart';
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
 import '../services/ad_service.dart';
@@ -49,6 +50,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
 
   /// Set once the finish-screen "2x coins" reward has been granted.
   bool _coinsDoubled = false;
+
+  /// Stars earned on this run (1–3) and any one-time star coin bonus paid,
+  /// computed at the finish line and shown on the finish overlay.
+  int _earnedStars = 0;
+  int _starBonusCoins = 0;
 
   /// Guards _restart/_goToMenu/_goToLevels against being triggered more
   /// than once. Without this, mashing an overlay button (e.g. "restart"
@@ -132,16 +138,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _onRoundFinished() {
+  Future<void> _onRoundFinished() async {
     _gasPressed = false;
     _brakePressed = false;
     if (_roundSaved) return;
     _roundSaved = true;
-    _saveProgress();
+    _earnedStars = _computeStars();
+    // Await so the star bonus + updated balance are ready before the finish
+    // overlay (which reads them) is shown. The await also defers setState off
+    // the current game render frame.
+    await _saveProgress();
     AdService.instance.recordRunEnded();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _finished = true);
-    });
+    if (mounted) setState(() => _finished = true);
   }
 
   /// Persists whatever coins were collected this run to the player's total,
@@ -157,6 +165,16 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     await GameProgressService.instance.addCoins(delta);
   }
 
+  /// Stars for a finished run: ⭐ reach the finish, ⭐⭐ collect the required
+  /// coins (a genuine pass), ⭐⭐⭐ collect ≥90% of the road's coins (mastery).
+  int _computeStars() {
+    final collected = _game.coinNotifier.value;
+    var stars = 1;
+    if (collected >= _round.requiredCoins) stars = 2;
+    if (collected >= (_round.totalCoins * 0.9).floor()) stars = 3;
+    return stars;
+  }
+
   /// Only reaching the actual finish line can mark a round completed and
   /// unlock the next one — matching [_round.requiredCoins] alone is not
   /// enough, the player still has to finish the road.
@@ -169,6 +187,13 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
         _round.roundIndex,
       );
     }
+    // Award stars (best kept) and any one-time star coin bonus.
+    _starBonusCoins = await GameProgressService.instance.recordStars(
+      _round.theme,
+      _round.roundIndex,
+      _earnedStars,
+      _round.totalCoins,
+    );
   }
 
   void _togglePause() {
@@ -540,6 +565,8 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                 round: _round,
                 coinsCollected: _game.coinNotifier.value,
                 coinsDoubled: _coinsDoubled,
+                stars: _earnedStars,
+                starBonus: _starBonusCoins,
                 onDoubleCoins: _watchAdToDoubleCoins,
                 onNextLevel: _goToNextRound,
                 onLevels: _goToLevels,
@@ -1282,6 +1309,8 @@ class _FinishOverlay extends StatefulWidget {
     required this.round,
     required this.coinsCollected,
     required this.coinsDoubled,
+    required this.stars,
+    required this.starBonus,
     required this.onDoubleCoins,
     required this.onLevels,
     required this.onRestart,
@@ -1292,6 +1321,10 @@ class _FinishOverlay extends StatefulWidget {
   final RoundConfig round;
   final int coinsCollected;
   final bool coinsDoubled;
+
+  /// Stars earned this run (1–3) and the one-time coin bonus they paid.
+  final int stars;
+  final int starBonus;
   final VoidCallback onDoubleCoins;
   final VoidCallback onLevels;
   final VoidCallback onRestart;
@@ -1347,6 +1380,8 @@ class _FinishOverlayState extends State<_FinishOverlay>
         passed &&
         widget.round.roundIndex <
             RoundConfig.totalRoundsFor(widget.round.theme);
+    final nextGate = GameProgressService.instance.nextUnpaidGate();
+    final balance = GameProgressService.instance.getTotalCoins();
 
     return Container(
       color: Colors.black.withValues(alpha: 0.85),
@@ -1517,6 +1552,55 @@ class _FinishOverlayState extends State<_FinishOverlay>
                       ),
                     ],
                   ),
+
+                  const SizedBox(height: 12),
+
+                  // Stars earned this run (best is kept across replays)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (int i = 1; i <= 3; i++)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Icon(
+                            i <= widget.stars
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            color: i <= widget.stars
+                                ? const Color(0xFFFFD700)
+                                : const Color(0xFF4A3320),
+                            size: 32,
+                          ),
+                        ),
+                      if (widget.starBonus > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0x33FFD700),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '+${widget.starBonus}',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD700),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  // "Az galdy" — progress toward the next coin gate
+                  if (nextGate != null) ...[
+                    const SizedBox(height: 10),
+                    _NextGateBar(gate: nextGate, balance: balance),
+                  ],
 
                   // Next round unlocked notice
                   if (nextUnlocked) ...[
@@ -1796,6 +1880,111 @@ class _OverlayBtn extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Next-gate "az galdy" progress bar ──────────────────────────────────────
+
+/// Shows how close the player is to affording the next coin gate — the
+/// near-miss nudge from the monetisation plan ("14 300 / 20 000 — ýene azajyk").
+class _NextGateBar extends StatelessWidget {
+  const _NextGateBar({required this.gate, required this.balance});
+
+  final GateInfo gate;
+  final int balance;
+
+  String get _label {
+    if (gate.isMapGate) {
+      switch (gate.theme) {
+        case MapTheme.garagum:
+          return 'Garagum kartasy';
+        case MapTheme.ashgabat:
+          return 'Aşgabat kartasy';
+        case MapTheme.yangykala:
+          return 'Ýaňňykala kartasy';
+        case MapTheme.derweze:
+          return 'Derweze kartasy';
+      }
+    }
+    return '${gate.round}-nji tur';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final frac = (balance / gate.cost).clamp(0.0, 1.0);
+    final remaining = (gate.cost - balance).clamp(0, gate.cost);
+    final ready = balance >= gate.cost;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0x33E8A33D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  ready ? '$_label — açmaga taýýar!' : '$_label açmaga',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFFFD98C),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$balance / ${gate.cost}',
+                style: const TextStyle(
+                  color: Color(0xFFFFD700),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Stack(
+              children: [
+                Container(height: 6, color: const Color(0x22FFFFFF)),
+                FractionallySizedBox(
+                  widthFactor: frac,
+                  child: Container(
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFFF8C1A), Color(0xFFFFD700)],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!ready) ...[
+            const SizedBox(height: 4),
+            Text(
+              'ýene $remaining teňňe',
+              style: const TextStyle(
+                color: Color(0xFF8A6A3F),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -1,14 +1,23 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/gate_config.dart';
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
 
 /// Handles persistent local game progress:
-/// - Total coins collected across all runs
-/// - Which rounds are unlocked, per map
-/// - Which rounds have been completed (passed their required coin threshold), per map
+/// - Total coins collected across all runs (spendable)
+/// - Which rounds are unlocked / completed, per map
+/// - Which coin "gates" have been paid (see [isGatePaid])
+/// - Which vehicles the player owns
 class GameProgressService {
   static const String _keyTotalCoins = 'total_coins';
+  static const String _keySelectedVehicle = 'selected_vehicle';
+  static const String _keyOwnedVehicles = 'owned_vehicles';
+  static const String _keyPaidGates = 'paid_gates';
+
+  /// Vehicles the player starts with for free. Everything else must be bought.
+  static const Set<String> _defaultOwnedVehicles = {'buggy'};
 
   static GameProgressService? _instance;
   static GameProgressService get instance {
@@ -20,29 +29,30 @@ class GameProgressService {
 
   SharedPreferences? _prefs;
 
+  /// Live coin balance — lets widgets (garage, levels header) rebuild the
+  /// moment coins are earned or spent without threading callbacks around.
+  final ValueNotifier<int> coinsNotifier = ValueNotifier(0);
+
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
-    for (final theme in MapTheme.values) {
-      final unlocked = getUnlockedRounds(theme);
-      bool changed = false;
-      if (!unlocked.contains(1)) {
-        unlocked.add(1);
+    // Only Garagum starts with rounds 1 & 2 open. The other maps stay locked
+    // until their map-unlock gate is paid (see BIZNES_MEYILNAMA_hasap_60tur.md).
+    final garagum = getUnlockedRounds(MapTheme.garagum);
+    bool changed = false;
+    for (final r in [1, 2]) {
+      if (!garagum.contains(r)) {
+        garagum.add(r);
         changed = true;
-      }
-      if (!unlocked.contains(2)) {
-        unlocked.add(2);
-        changed = true;
-      }
-      if (changed) {
-        await _prefs!
-            .setString(_unlockedKey(theme), _encodeList(unlocked));
       }
     }
+    if (changed) {
+      await _prefs!
+          .setString(_unlockedKey(MapTheme.garagum), _encodeList(garagum));
+    }
+    coinsNotifier.value = getTotalCoins();
   }
 
   // ── Coins ────────────────────────────────────────────────────────────────
-
-  static const String _keySelectedVehicle = 'selected_vehicle';
 
   int getTotalCoins() {
     return _prefs?.getInt(_keyTotalCoins) ?? 0;
@@ -50,10 +60,24 @@ class GameProgressService {
 
   Future<void> addCoins(int amount) async {
     final current = getTotalCoins();
-    await _prefs?.setInt(_keyTotalCoins, current + amount);
+    final next = current + amount;
+    await _prefs?.setInt(_keyTotalCoins, next);
+    coinsNotifier.value = next;
   }
 
-  // ── Selected Vehicle ──────────────────────────────────────────────────────
+  /// Attempts to spend [amount] coins. Returns false (and changes nothing) if
+  /// the balance is insufficient.
+  Future<bool> spendCoins(int amount) async {
+    if (amount <= 0) return true;
+    final current = getTotalCoins();
+    if (current < amount) return false;
+    final next = current - amount;
+    await _prefs?.setInt(_keyTotalCoins, next);
+    coinsNotifier.value = next;
+    return true;
+  }
+
+  // ── Vehicles ──────────────────────────────────────────────────────────────
 
   String getSelectedVehicle() {
     return _prefs?.getString(_keySelectedVehicle) ?? 'buggy';
@@ -61,6 +85,78 @@ class GameProgressService {
 
   Future<void> setSelectedVehicle(String vehicleId) async {
     await _prefs?.setString(_keySelectedVehicle, vehicleId);
+  }
+
+  Set<String> getOwnedVehicles() {
+    final raw = _prefs?.getStringList(_keyOwnedVehicles) ?? const [];
+    return {..._defaultOwnedVehicles, ...raw};
+  }
+
+  bool isVehicleOwned(String vehicleId) =>
+      getOwnedVehicles().contains(vehicleId);
+
+  Future<void> ownVehicle(String vehicleId) async {
+    final owned = getOwnedVehicles()..add(vehicleId);
+    // Persist only the non-default ids to keep the stored list minimal.
+    final toStore =
+        owned.where((v) => !_defaultOwnedVehicles.contains(v)).toList();
+    await _prefs?.setStringList(_keyOwnedVehicles, toStore);
+  }
+
+  // ── Stars (1–3 per round, best kept) ──────────────────────────────────────
+
+  String _starsKey(MapTheme theme, int round) => 'stars_${theme.name}_$round';
+
+  /// Best star count earned on this round so far (0 = not yet earned any).
+  int getStars(MapTheme theme, int round) =>
+      _prefs?.getInt(_starsKey(theme, round)) ?? 0;
+
+  /// Records [stars] for a round if it beats the stored best, and awards a
+  /// one-time coin bonus for each newly-crossed star tier (⭐⭐ = +5% of the
+  /// round's road coins, ⭐⭐⭐ = a further +10%). Returns the coin bonus paid.
+  Future<int> recordStars(MapTheme theme, int round, int stars, int roadCoins) async {
+    final old = getStars(theme, round);
+    if (stars <= old) return 0;
+    await _prefs?.setInt(_starsKey(theme, round), stars);
+    final bonus = _starBonus(stars, roadCoins) - _starBonus(old, roadCoins);
+    if (bonus > 0) await addCoins(bonus);
+    return bonus > 0 ? bonus : 0;
+  }
+
+  /// Cumulative coin bonus for reaching [stars]: 0 for ⭐, +5% at ⭐⭐,
+  /// +15% total at ⭐⭐⭐.
+  int _starBonus(int stars, int roadCoins) {
+    if (stars >= 3) return (roadCoins * 0.15).floor();
+    if (stars >= 2) return (roadCoins * 0.05).floor();
+    return 0;
+  }
+
+  // ── Gates (coin walls that unlock rounds / maps) ──────────────────────────
+
+  String _gateToken(MapTheme theme, int round) => '${theme.name}:$round';
+
+  bool isGatePaid(MapTheme theme, int round) {
+    final paid = _prefs?.getStringList(_keyPaidGates) ?? const [];
+    return paid.contains(_gateToken(theme, round));
+  }
+
+  Future<void> markGatePaid(MapTheme theme, int round) async {
+    final paid = _prefs?.getStringList(_keyPaidGates) ?? <String>[];
+    final token = _gateToken(theme, round);
+    if (!paid.contains(token)) {
+      paid.add(token);
+      await _prefs?.setStringList(_keyPaidGates, paid);
+    }
+  }
+
+  /// The next gate the player is saving toward (first unpaid gate in global
+  /// play order), or null once every gate is paid. Powers the "az galdy"
+  /// progress bar on the result screen.
+  GateInfo? nextUnpaidGate() {
+    for (final gate in GateConfig.orderedGates) {
+      if (!isGatePaid(gate.theme, gate.round)) return gate;
+    }
+    return null;
   }
 
   // ── Rounds ───────────────────────────────────────────────────────────────
@@ -77,7 +173,8 @@ class GameProgressService {
       : 'completed_rounds_${theme.name}';
 
   List<int> getUnlockedRounds(MapTheme theme) {
-    final raw = _prefs?.getString(_unlockedKey(theme)) ?? '1,2';
+    final fallback = theme == MapTheme.garagum ? '1,2' : '';
+    final raw = _prefs?.getString(_unlockedKey(theme)) ?? fallback;
     return _decodeList(raw);
   }
 
@@ -124,6 +221,10 @@ class GameProgressService {
 
   List<int> _decodeList(String raw) {
     if (raw.isEmpty) return [];
-    return raw.split(',').map((e) => int.tryParse(e.trim()) ?? 0).where((e) => e > 0).toList();
+    return raw
+        .split(',')
+        .map((e) => int.tryParse(e.trim()) ?? 0)
+        .where((e) => e > 0)
+        .toList();
   }
 }

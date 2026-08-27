@@ -66,6 +66,11 @@ class AdService {
     _initialized = true;
     _prefs = await SharedPreferences.getInstance();
     try {
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(
+          testDeviceIds: ['5078FBCB70B6D336AA8E0D8A6981730B'],
+        ),
+      );
       await MobileAds.instance.initialize();
     } catch (e) {
       debugPrint('[ads] initialize failed: $e');

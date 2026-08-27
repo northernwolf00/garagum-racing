@@ -64,9 +64,37 @@ class _GarageScreenState extends State<GarageScreen>
     super.dispose();
   }
 
+  bool _isOwned(VehicleConfig v) =>
+      v.unlocked || GameProgressService.instance.isVehicleOwned(v.id);
+
+  Future<void> _buyVehicle(VehicleConfig v) async {
+    final ok = await GameProgressService.instance.spendCoins(v.unlockCost);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ýeterlik teňňe ýok!'),
+          backgroundColor: Color(0xFF3D1A06),
+        ),
+      );
+      return;
+    }
+    await GameProgressService.instance.ownVehicle(v.id);
+    await GameProgressService.instance.setSelectedVehicle(v.id);
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${v.name} satyn alyndy!'),
+        backgroundColor: const Color(0xFF1C3D06),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vehicle = _vehicles[_selectedVehicle];
+    final vehicleOwned = _isOwned(vehicle);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F0905),
@@ -148,12 +176,12 @@ class _GarageScreenState extends State<GarageScreen>
                         itemBuilder: (_, i) {
                           final v = _vehicles[i];
                           final selected = i == _selectedVehicle;
+                          final owned = _isOwned(v);
                           return GestureDetector(
-                            onTap: () async {
-                              setState(() => _selectedVehicle = i);
-                              await GameProgressService.instance
-                                  .setSelectedVehicle(_vehicles[i].id);
-                            },
+                            // Tapping only previews the vehicle. Persisting it
+                            // as the race vehicle happens on "SAÝLA WE OÝNA",
+                            // which is shown only for owned vehicles.
+                            onTap: () => setState(() => _selectedVehicle = i),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.symmetric(
@@ -179,10 +207,10 @@ class _GarageScreenState extends State<GarageScreen>
                               ),
                               child: Row(
                                 children: [
-                                  if (!v.unlocked)
+                                  if (!owned)
                                     const Icon(Icons.lock, size: 14,
                                         color: Color(0xFFE8A33D)),
-                                  if (!v.unlocked)
+                                  if (!owned)
                                     const SizedBox(width: 4),
                                   Text(
                                     v.name,
@@ -246,7 +274,7 @@ class _GarageScreenState extends State<GarageScreen>
                               ),
                             ),
                             // Lock overlay
-                            if (!vehicle.unlocked)
+                            if (!vehicleOwned)
                               Container(
                                 width: 280,
                                 height: 140,
@@ -315,7 +343,7 @@ class _GarageScreenState extends State<GarageScreen>
                                 ),
                               ),
                               const Spacer(),
-                              if (vehicle.unlocked)
+                              if (vehicleOwned)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 4),
@@ -358,7 +386,7 @@ class _GarageScreenState extends State<GarageScreen>
                     // Action button
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: vehicle.unlocked
+                      child: vehicleOwned
                           ? _ActionButton(
                               label: 'SAÝLA WE OÝNA',
                               icon: Icons.check_circle_rounded,
@@ -375,14 +403,7 @@ class _GarageScreenState extends State<GarageScreen>
                               label: 'SAT AL — ${vehicle.unlockCost} teňňe',
                               icon: Icons.lock_open_rounded,
                               primary: false,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Ýeterlik teňňe ýok!'),
-                                    backgroundColor: Color(0xFF3D1A06),
-                                  ),
-                                );
-                              },
+                              onTap: () => _buyVehicle(vehicle),
                             ),
                     ),
 

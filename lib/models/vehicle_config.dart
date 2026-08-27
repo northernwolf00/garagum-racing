@@ -31,6 +31,9 @@ class VehicleConfig {
   String get fullBodyAsset => bodyAsset.startsWith('assets/') ? bodyAsset : 'assets/images/$bodyAsset';
   String get fullWheelAsset => wheelAsset.startsWith('assets/') ? wheelAsset : 'assets/images/$wheelAsset';
 
+  /// Ordered cheapest → most expensive so the garage reads as a progression.
+  /// `unlocked` here means "owned for free from the start" — only the Buggy.
+  /// The rest are bought with coins (persisted via GameProgressService).
   static const List<VehicleConfig> allVehicles = [
     VehicleConfig(
       id: 'buggy',
@@ -56,21 +59,8 @@ class VehicleConfig {
       suspension: 0.6,
       tires: 0.5,
       fuel: 0.65,
-      unlocked: true,
-      unlockCost: 0,
-    ),
-    VehicleConfig(
-      id: 'pikap',
-      name: 'Pikap',
-      bodyAsset: 'images_yangykala/vehicles/pikap_body.png',
-      wheelAsset: 'images_yangykala/vehicles/pikap_wheel.png',
-      showDriver: false,
-      engine: 0.7,
-      suspension: 0.65,
-      tires: 0.75,
-      fuel: 0.7,
-      unlocked: true,
-      unlockCost: 0,
+      unlocked: false,
+      unlockCost: 15000,
     ),
     VehicleConfig(
       id: 'ak_ulag',
@@ -82,8 +72,21 @@ class VehicleConfig {
       suspension: 0.5,
       tires: 0.55,
       fuel: 0.6,
-      unlocked: true,
-      unlockCost: 0,
+      unlocked: false,
+      unlockCost: 40000,
+    ),
+    VehicleConfig(
+      id: 'pikap',
+      name: 'Pikap',
+      bodyAsset: 'images_yangykala/vehicles/pikap_body.png',
+      wheelAsset: 'images_yangykala/vehicles/pikap_wheel.png',
+      showDriver: false,
+      engine: 0.7,
+      suspension: 0.65,
+      tires: 0.75,
+      fuel: 0.7,
+      unlocked: false,
+      unlockCost: 90000,
     ),
   ];
 
