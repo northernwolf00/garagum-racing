@@ -36,6 +36,9 @@ class PurchaseService {
     'coins_200000': 200000,
   };
 
+  /// One-time bundle: 25 000 coins + UAZ + 3-day ad-free window.
+  static const String starterPackProductId = 'starter_pack';
+
   /// RevenueCat *public* SDK keys. Replace the placeholders with the real
   /// keys from the RevenueCat dashboard (Project → API keys). While they are
   /// left as placeholders the service runs in a safe no-op mode: nothing is
@@ -145,6 +148,10 @@ class PurchaseService {
 
   Future<void> _creditConsumableIfNeeded(String productId) async {
     // Store product ids often carry a platform suffix; match by prefix key.
+    if (productId.contains(starterPackProductId)) {
+      await GameProgressService.instance.grantStarterPack();
+      return;
+    }
     for (final entry in coinPackAmounts.entries) {
       if (productId.contains(entry.key)) {
         await GameProgressService.instance.addCoins(entry.value);

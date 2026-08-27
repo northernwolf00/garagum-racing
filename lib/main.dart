@@ -20,6 +20,10 @@ void main() async {
   await PurchaseService.instance.init();
   await AdService.instance.init();
 
+  // Grant the VIP daily coin bonus once per day (no-op for non-VIP players).
+  await GameProgressService.instance
+      .claimVipDailyIfDue(PurchaseService.instance.isVip);
+
   // Lock to portrait before the first frame is shown.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

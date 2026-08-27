@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
+import '../models/upgrade_config.dart';
 import '../models/vehicle_config.dart';
 import '../services/game_progress_service.dart';
 import 'audio/audio_manager.dart';
@@ -234,20 +235,30 @@ class GaragumRacingGame extends Forge2DGame {
                 'images_derweze/vehicles/headlight_beam.png')
           : null;
 
+      // Apply the player's bought upgrades on top of the base ratings.
+      final progress = GameProgressService.instance;
+      final engine = progress.effectiveStat(
+          selectedVehicleId, UpgradeType.engine, selectedVehicle.engine);
+      final suspension = progress.effectiveStat(
+          selectedVehicleId, UpgradeType.suspension, selectedVehicle.suspension);
+      final tires = progress.effectiveStat(
+          selectedVehicleId, UpgradeType.tires, selectedVehicle.tires);
+      final fuel = progress.effectiveStat(
+          selectedVehicleId, UpgradeType.fuel, selectedVehicle.fuel);
+
       final cComponent = Car(
         startPosition: Vector2(_spawnX, spawnY),
         bodyAsset: selectedVehicle.bodyAsset,
         wheelAsset: selectedVehicle.wheelAsset,
         headlightAsset: headlight,
         showDriver: selectedVehicle.showDriver,
-        engineRating: selectedVehicle.engine,
-        suspensionRating: selectedVehicle.suspension,
-        tireRating: selectedVehicle.tires,
+        engineRating: engine,
+        suspensionRating: suspension,
+        tireRating: tires,
       );
       await world.add(cComponent);
       car = cComponent;
-      _fullFuelSeconds =
-          _baseFullFuelSeconds * (0.7 + selectedVehicle.fuel * 0.6);
+      _fullFuelSeconds = _baseFullFuelSeconds * (0.7 + fuel * 0.6);
 
       camera.viewfinder.anchor = Anchor.center;
       camera.viewfinder.position = cComponent.position.clone();

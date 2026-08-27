@@ -2,6 +2,7 @@ import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../models/gate_config.dart';
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
 import '../../services/game_progress_service.dart';
@@ -86,29 +87,54 @@ class _LevelsScreenState extends State<LevelsScreen>
     );
   }
 
+  /// Whether the round can be played right now (progression unlocked and any
+  /// coin gate already paid).
+  bool _isPlayable(RoundConfig round) {
+    final r = round.roundIndex;
+    final progressionUnlocked = _progress.isRoundUnlocked(widget.theme, r);
+    if (!GateConfig.isGate(widget.theme, r)) return progressionUnlocked;
+    return progressionUnlocked && _progress.isGatePaid(widget.theme, r);
+  }
+
+  /// Whether an unpaid coin gate on this round is reachable (so it should be
+  /// shown as a "pay to unlock" card rather than a plain "finish previous" one).
+  /// Map-entry gates (round 1) are always reachable; in-map gates need the
+  /// previous round completed.
+  bool _isGatePayable(RoundConfig round) {
+    final r = round.roundIndex;
+    if (!GateConfig.isGate(widget.theme, r)) return false;
+    if (_progress.isGatePaid(widget.theme, r)) return false;
+    return r == 1 || _progress.isRoundCompleted(widget.theme, r - 1);
+  }
+
+  void _playSelectSound() {
+    try {
+      FlameAudio.play('sfx/button_select.wav', volume: 0.8);
+    } catch (_) {}
+  }
+
+  void _playLockedSound() {
+    try {
+      FlameAudio.play('sfx/button_locked.wav', volume: 0.8);
+    } catch (_) {}
+  }
+
   void _onRoundTap(RoundConfig round) {
-    final unlocked = _progress.isRoundUnlocked(widget.theme, round.roundIndex);
-    if (unlocked) {
-      debugPrint('[level] 🔓 Round ${round.roundIndex} selected (UNLOCKED) → playing button_select.wav');
-      try {
-        FlameAudio.play('sfx/button_select.wav', volume: 0.8);
-      } catch (e) {
-        debugPrint('[audio] Error playing button_select.wav: $e');
-      }
-    } else {
-      debugPrint('[level] 🔒 Round ${round.roundIndex} tapped (LOCKED) → playing button_locked.wav');
-      try {
-        FlameAudio.play('sfx/button_locked.wav', volume: 0.8);
-      } catch (e) {
-        debugPrint('[audio] Error playing button_locked.wav: $e');
-      }
-      // Locked round → surface the store as an upsell (coin packs to progress
-      // faster / premium). No-op until real RevenueCat keys are configured, so
-      // this changes nothing in the current build.
-      PurchaseService.instance.presentPaywall();
+    if (_isPlayable(round)) {
+      _playSelectSound();
+      _openRace(round);
       return;
     }
+    if (_isGatePayable(round)) {
+      _playSelectSound();
+      _showGateSheet(round);
+      return;
+    }
+    // Plain progression lock — previous round not finished yet.
+    _playLockedSound();
+  }
 
+  void _openRace(RoundConfig round) {
     Navigator.of(context)
         .push(
           PageRouteBuilder(
@@ -119,6 +145,154 @@ class _LevelsScreenState extends State<LevelsScreen>
           ),
         )
         .then((_) => setState(() {})); // refresh on return
+  }
+
+  Future<void> _payGate(RoundConfig round, int cost) async {
+    final ok = await _progress.spendCoins(cost);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ýeterlik teňňe ýok — $cost gerek, ${_progress.getTotalCoins()} bar',
+          ),
+          backgroundColor: const Color(0xFF3D1A06),
+        ),
+      );
+      // Offer the store as a way to progress faster (no-op until RevenueCat
+      // keys are configured).
+      PurchaseService.instance.presentPaywall();
+      return;
+    }
+    await _progress.markGatePaid(widget.theme, round.roundIndex);
+    await _progress.unlockRound(widget.theme, round.roundIndex);
+    if (!mounted) return;
+    setState(() {});
+    _openRace(round);
+  }
+
+  void _showGateSheet(RoundConfig round) {
+    final cost = GateConfig.costFor(widget.theme, round.roundIndex) ?? 0;
+    final isMap = GateConfig.isMapGate(widget.theme, round.roundIndex);
+    final balance = _progress.getTotalCoins();
+    final enough = balance >= cost;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1C1207),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0x33FFD98C),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Icon(
+                isMap ? Icons.map_rounded : Icons.lock_open_rounded,
+                color: const Color(0xFFFFD98C),
+                size: 40,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                isMap
+                    ? '${widget.headerTitle} kartasyny aç'
+                    : '${round.roundIndex}-nji tury aç',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFFFD98C),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/ui/coin.png',
+                    width: 22,
+                    height: 22,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.monetization_on,
+                      color: Color(0xFFFFD700),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$cost',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Balans: $balance teňňe',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF8A6A3F),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _payGate(round, cost);
+                },
+                child: Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: enough
+                        ? const LinearGradient(
+                            colors: [Color(0xFFFF8C1A), Color(0xFFE85A00)],
+                          )
+                        : null,
+                    color: enough ? null : const Color(0x33E8A33D),
+                    border: Border.all(
+                      color: enough
+                          ? const Color(0xFFFFAA44)
+                          : const Color(0x55E8A33D),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      enough ? 'AÇ WE OÝNA' : 'TEŇŇE AL',
+                      style: TextStyle(
+                        color: enough ? Colors.white : const Color(0xFFE8A33D),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -224,10 +398,8 @@ class _LevelsScreenState extends State<LevelsScreen>
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final round = widget.rounds[index];
-                    final unlocked = _progress.isRoundUnlocked(
-                      widget.theme,
-                      round.roundIndex,
-                    );
+                    final playable = _isPlayable(round);
+                    final gatePayable = _isGatePayable(round);
                     final completed = _progress.isRoundCompleted(
                       widget.theme,
                       round.roundIndex,
@@ -236,8 +408,18 @@ class _LevelsScreenState extends State<LevelsScreen>
                       index: index,
                       child: _RoundCard(
                         round: round,
-                        isUnlocked: unlocked,
+                        isUnlocked: playable,
                         isCompleted: completed,
+                        stars: _progress.getStars(
+                          widget.theme,
+                          round.roundIndex,
+                        ),
+                        gateCost: gatePayable
+                            ? GateConfig.costFor(widget.theme, round.roundIndex)
+                            : null,
+                        isMapGate: gatePayable &&
+                            GateConfig.isMapGate(
+                                widget.theme, round.roundIndex),
                         gradientColors: widget.gradientForRound(
                           round.roundIndex,
                         ),
@@ -491,11 +673,22 @@ class _RoundCard extends StatefulWidget {
     required this.minFreq,
     required this.maxFreq,
     required this.onTap,
+    this.stars = 0,
+    this.gateCost,
+    this.isMapGate = false,
   });
 
   final RoundConfig round;
   final bool isUnlocked;
   final bool isCompleted;
+
+  /// Best stars (0–3) earned on this round, shown on the card.
+  final int stars;
+
+  /// When non-null this round is behind a payable coin gate; the card shows a
+  /// price + "AÇ" affordance instead of the plain "finish previous" lock.
+  final int? gateCost;
+  final bool isMapGate;
   final List<Color> gradientColors;
   final double minFreq;
   final double maxFreq;
@@ -617,7 +810,23 @@ class _RoundCardState extends State<_RoundCard>
                           ),
                         ),
                         const Spacer(),
-                        if (completed)
+                        if (widget.stars > 0)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (int i = 1; i <= 3; i++)
+                                Icon(
+                                  i <= widget.stars
+                                      ? Icons.star_rounded
+                                      : Icons.star_outline_rounded,
+                                  color: i <= widget.stars
+                                      ? const Color(0xFFFFD700)
+                                      : Colors.white.withValues(alpha: 0.35),
+                                  size: isLandscape ? 12 : 14,
+                                ),
+                            ],
+                          )
+                        else if (completed)
                           Icon(
                             Icons.check_circle_rounded,
                             color: const Color(0xFF76FF03),
@@ -721,36 +930,87 @@ class _RoundCardState extends State<_RoundCard>
                   ),
                 ),
 
-              // Locked overlay
+              // Locked overlay — either a payable coin gate (price + "AÇ") or a
+              // plain progression lock ("finish previous round").
               if (!unlocked)
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
-                      color: Colors.black.withValues(alpha: 0.35),
+                      color: Colors.black.withValues(
+                        alpha: widget.gateCost != null ? 0.5 : 0.35,
+                      ),
                     ),
                     child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.lock_rounded,
-                            color: Color(0xFF8A6A3F),
-                            size: 26,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${round.roundIndex - 1}-nji turu geç',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFF8A6A3F),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
+                      child: widget.gateCost != null
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  widget.isMapGate
+                                      ? Icons.map_rounded
+                                      : Icons.lock_open_rounded,
+                                  color: const Color(0xFFFFD98C),
+                                  size: 24,
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/ui/coin.png',
+                                      width: 14,
+                                      height: 14,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.monetization_on,
+                                        color: Color(0xFFFFD700),
+                                        size: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${widget.gateCost}',
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFD700),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.isMapGate ? 'KARTANY AÇ' : 'AÇ',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD98C),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.lock_rounded,
+                                  color: Color(0xFF8A6A3F),
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${round.roundIndex - 1}-nji turu geç',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFF8A6A3F),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ),
