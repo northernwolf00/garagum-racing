@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
@@ -30,7 +31,7 @@ class GaragumLevelsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return LevelsScreen(
       theme: MapTheme.garagum,
-      headerTitle: 'GARAGUM ÇÖLI',
+      headerTitle: 'header_garagum'.tr,
       rounds: RoundConfig.all,
       gradientForRound: _gradientForRound,
     );

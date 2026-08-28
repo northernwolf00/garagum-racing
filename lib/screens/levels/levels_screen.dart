@@ -1,6 +1,7 @@
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../../models/gate_config.dart';
 import '../../models/map_theme.dart';
@@ -155,7 +156,10 @@ class _LevelsScreenState extends State<LevelsScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Ýeterlik teňňe ýok — $cost gerek, ${_progress.getTotalCoins()} bar',
+            'not_enough_coins_detail'.trParams({
+              'cost': '$cost',
+              'have': '${_progress.getTotalCoins()}',
+            }),
           ),
           backgroundColor: const Color(0xFF3D1A06),
         ),
@@ -209,8 +213,8 @@ class _LevelsScreenState extends State<LevelsScreen>
               const SizedBox(height: 12),
               Text(
                 isMap
-                    ? '${widget.headerTitle} kartasyny aç'
-                    : '${round.roundIndex}-nji tury aç',
+                    ? 'unlock_map_named'.trParams({'name': widget.headerTitle})
+                    : 'unlock_lap'.trParams({'lap': '${round.roundIndex}'}),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFFFFD98C),
@@ -246,7 +250,7 @@ class _LevelsScreenState extends State<LevelsScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                'Balans: $balance teňňe',
+                'balance_coins'.trParams({'n': '$balance'}),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF8A6A3F),
@@ -278,7 +282,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                   ),
                   child: Center(
                     child: Text(
-                      enough ? 'AÇ WE OÝNA' : 'TEŇŇE AL',
+                      enough ? 'unlock_and_play'.tr : 'get_coins'.tr,
                       style: TextStyle(
                         color: enough ? Colors.white : const Color(0xFFE8A33D),
                         fontSize: 15,
@@ -521,9 +525,9 @@ class _ProgressSummary extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'ÖŇEGIDIŞLIK',
-                style: TextStyle(
+              Text(
+                'progress'.tr,
+                style: const TextStyle(
                   color: Color(0xFFFFD98C),
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -531,7 +535,10 @@ class _ProgressSummary extends StatelessWidget {
                 ),
               ),
               Text(
-                '$completed / $total tur',
+                'laps_completed'.trParams({
+                  'completed': '$completed',
+                  'total': '$total',
+                }),
                 style: const TextStyle(
                   color: Color(0xFFE8A33D),
                   fontSize: 13,
@@ -987,7 +994,9 @@ class _RoundCardState extends State<_RoundCard>
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  widget.isMapGate ? 'KARTANY AÇ' : 'AÇ',
+                                  widget.isMapGate
+                                      ? 'unlock_map'.tr
+                                      : 'unlock_short'.tr,
                                   style: const TextStyle(
                                     color: Color(0xFFFFD98C),
                                     fontSize: 9,
@@ -1007,7 +1016,9 @@ class _RoundCardState extends State<_RoundCard>
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '${round.roundIndex - 1}-nji turu geç',
+                                  'complete_lap'.trParams({
+                                    'lap': '${round.roundIndex - 1}',
+                                  }),
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     color: Color(0xFF8A6A3F),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
@@ -37,7 +38,7 @@ class AshgabatLevelsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return LevelsScreen(
       theme: MapTheme.ashgabat,
-      headerTitle: 'AŞGABAT ŞÄHERI',
+      headerTitle: 'header_ashgabat'.tr,
       rounds: RoundConfig.ashgabatAll,
       gradientForRound: _gradientForRound,
     );

@@ -1,7 +1,10 @@
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
+import '../../i18n/locale_service.dart';
+import '../../i18n/translation_service.dart';
 import '../../services/game_progress_service.dart';
 import '../../services/purchase_service.dart';
 import '../../widgets/ad_banner.dart';
@@ -38,38 +41,38 @@ class _MenuScreenState extends State<MenuScreen>
   final List<_MapItem> _maps = const [
     _MapItem(
       id: 'garagum',
-      title: 'Garagum çöli',
-      subtitle: 'Geniş çägelikler hem gum gerişleri',
+      title: 'map_garagum_title',
+      subtitle: 'map_garagum_subtitle',
       assetPath: 'assets/images/ui/map_card_garagum.png',
       isUnlocked: true,
-      badgeText: 'AÇYK',
+      badgeText: 'open',
       gradientColors: [Color(0xFFE8A33D), Color(0xFF8B4A1A)],
     ),
     _MapItem(
       id: 'ashgabat',
-      title: 'Aşgabat',
-      subtitle: 'Ak mermer köçeler hem belent binalar',
+      title: 'map_ashgabat_title',
+      subtitle: 'map_ashgabat_subtitle',
       assetPath: '',
       isUnlocked: true,
-      badgeText: 'AÇYK',
+      badgeText: 'open',
       gradientColors: [Color(0xFF79BEE4), Color(0xFF2C6B8A)],
     ),
     _MapItem(
       id: 'yannykala',
-      title: 'Ýaňňykala',
-      subtitle: 'Dik gaýalar hem kanyon geçelgeleri',
+      title: 'map_yangykala_title',
+      subtitle: 'map_yangykala_subtitle',
       assetPath: '',
       isUnlocked: true,
-      badgeText: 'AÇYK',
+      badgeText: 'open',
       gradientColors: [Color(0xFFD35400), Color(0xFF6E2C00)],
     ),
     _MapItem(
       id: 'derweze',
-      title: 'Derweze (Gaz krateri)',
-      subtitle: 'Gije, alaw hem gapanak bökdençler',
+      title: 'map_derweze_title',
+      subtitle: 'map_derweze_subtitle',
       assetPath: '',
       isUnlocked: true,
-      badgeText: 'AÇYK',
+      badgeText: 'open',
       gradientColors: [Color(0xFFC0392B), Color(0xFF641E16)],
     ),
   ];
@@ -155,12 +158,13 @@ class _MenuScreenState extends State<MenuScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
-          children: const [
-            Icon(Icons.lock_clock_outlined, color: Color(0xFFFFD98C), size: 20),
-            SizedBox(width: 10),
+          children: [
+            const Icon(Icons.lock_clock_outlined,
+                color: Color(0xFFFFD98C), size: 20),
+            const SizedBox(width: 10),
             Text(
-              'Entek elýeterli däl',
-              style: TextStyle(
+              'not_available_yet'.tr,
+              style: const TextStyle(
                 color: Color(0xFFFFD98C),
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
@@ -428,13 +432,13 @@ class _MenuScreenState extends State<MenuScreen>
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: Row(
-                            children: const [
-                              Icon(Icons.map_rounded,
+                            children: [
+                              const Icon(Icons.map_rounded,
                                   size: 18, color: Color(0xFFE8A33D)),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
-                                'KARTA SAÝLAŇ',
-                                style: TextStyle(
+                                'select_map'.tr,
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: Color(0xFFFFD98C),
@@ -537,7 +541,7 @@ class _MenuScreenState extends State<MenuScreen>
                                                     ),
                                                     const SizedBox(width: 4),
                                                     Text(
-                                                      map.badgeText,
+                                                      map.badgeText.tr,
                                                       style: TextStyle(
                                                         color: map.isUnlocked
                                                             ? const Color(
@@ -566,7 +570,7 @@ class _MenuScreenState extends State<MenuScreen>
                                           ),
                                           const Spacer(),
                                           Text(
-                                            map.title,
+                                            map.title.tr,
                                             style: const TextStyle(
                                               fontSize: 20,
                                               fontWeight: FontWeight.w900,
@@ -580,7 +584,7 @@ class _MenuScreenState extends State<MenuScreen>
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            map.subtitle,
+                                            map.subtitle.tr,
                                             style: const TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w500,
@@ -605,14 +609,14 @@ class _MenuScreenState extends State<MenuScreen>
                                             child: Center(
                                               child: Column(
                                                 mainAxisSize: MainAxisSize.min,
-                                                children: const [
-                                                  Icon(Icons.lock,
+                                                children: [
+                                                  const Icon(Icons.lock,
                                                       size: 32,
                                                       color: Color(0xFFFFD98C)),
-                                                  SizedBox(height: 4),
+                                                  const SizedBox(height: 4),
                                                   Text(
-                                                    'Entek elýeterli däl',
-                                                    style: TextStyle(
+                                                    'not_available_yet'.tr,
+                                                    style: const TextStyle(
                                                       color: Color(0xFFFFD98C),
                                                       fontSize: 11,
                                                       fontWeight:
@@ -670,21 +674,21 @@ class _MenuScreenState extends State<MenuScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _MenuButton(
-                            label: 'OYNA',
+                            label: 'play'.tr,
                             icon: Icons.play_arrow_rounded,
                             isPrimary: true,
                             onTap: _onPlay,
                           ),
                           const SizedBox(height: 12),
                           _MenuButton(
-                            label: 'GARAJ',
+                            label: 'garage'.tr,
                             icon: Icons.garage_rounded,
                             isPrimary: false,
                             onTap: _onGarage,
                           ),
                           const SizedBox(height: 12),
                           _MenuButton(
-                            label: 'SAZLAMALAR',
+                            label: 'settings'.tr,
                             icon: Icons.settings_rounded,
                             isPrimary: false,
                             onTap: _onSettings,
@@ -1180,9 +1184,9 @@ class _DailyRewardSheetState extends State<_DailyRewardSheet> {
           const Icon(Icons.card_giftcard_rounded,
               color: Color(0xFFFFD700), size: 40),
           const SizedBox(height: 10),
-          const Text(
-            'GÜNLÜK SOWGAT',
-            style: TextStyle(
+          Text(
+            'daily_gift'.tr,
+            style: const TextStyle(
               color: Color(0xFFFFD98C),
               fontSize: 18,
               fontWeight: FontWeight.w900,
@@ -1255,7 +1259,7 @@ class _DailyRewardSheetState extends State<_DailyRewardSheet> {
           const SizedBox(height: 20),
           if (_claimed > 0)
             Text(
-              '+$_claimed teňňe alyndy! 🎉',
+              'coins_claimed'.trParams({'n': '$_claimed'}),
               style: const TextStyle(
                 color: Color(0xFF44FF88),
                 fontSize: 15,
@@ -1285,8 +1289,9 @@ class _DailyRewardSheetState extends State<_DailyRewardSheet> {
                 child: Center(
                   child: Text(
                     canClaim
-                        ? '${_progress.pendingDailyReward} TEŇŇE AL'
-                        : 'ERTIR ÝENE GEL',
+                        ? 'claim_coins'.trParams(
+                            {'n': '${_progress.pendingDailyReward}'})
+                        : 'come_back_tomorrow'.tr,
                     style: TextStyle(
                       color:
                           canClaim ? Colors.white : const Color(0xFFE8A33D),
@@ -1339,9 +1344,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'SAZLAMALAR',
-            style: TextStyle(
+          Text(
+            'settings'.tr,
+            style: const TextStyle(
               color: Color(0xFFFFD98C),
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -1350,16 +1355,18 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           ),
           const SizedBox(height: 24),
           _SettingRow(
-            label: 'Saz',
+            label: 'music'.tr,
             value: _music,
             onChanged: (v) => setState(() => _music = v),
           ),
           const SizedBox(height: 16),
           _SettingRow(
-            label: 'Ses efektleri',
+            label: 'sound_effects'.tr,
             value: _sfx,
             onChanged: (v) => setState(() => _sfx = v),
           ),
+          const SizedBox(height: 16),
+          _LanguageRow(onChanged: () => setState(() {})),
           const SizedBox(height: 20),
           const Divider(color: Color(0x22E8A33D), height: 1),
           const SizedBox(height: 16),
@@ -1378,14 +1385,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: const Color(0x5576FF03)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.verified_rounded,
+                      const Icon(Icons.verified_rounded,
                           color: Color(0xFF76FF03), size: 20),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text(
-                        'Reklamasyz — işjeň',
-                        style: TextStyle(
+                        'ad_free_active'.tr,
+                        style: const TextStyle(
                           color: Color(0xFF76FF03),
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -1396,7 +1403,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 );
               }
               return _SettingsActionButton(
-                label: 'Reklamany aýyr',
+                label: 'remove_ads'.tr,
                 icon: Icons.block_rounded,
                 primary: true,
                 onTap: () =>
@@ -1408,7 +1415,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           ),
           const SizedBox(height: 12),
           _SettingsActionButton(
-            label: 'Satyn alyşy dikelt',
+            label: 'restore_purchases'.tr,
             icon: Icons.restore_rounded,
             primary: false,
             onTap: () async {
@@ -1417,9 +1424,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(ok
-                      ? 'Satyn alyşlar dikeldildi.'
-                      : 'Dikeltmek başartmady.'),
+                  content: Text(
+                      ok ? 'purchases_restored'.tr : 'restore_failed'.tr),
                   duration: const Duration(seconds: 2),
                 ),
               );
@@ -1523,6 +1529,78 @@ class _SettingRow extends StatelessWidget {
                 ? const Color(0x55FF8C1A)
                 : const Color(0x33FFFFFF),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Language picker row shown in the settings sheet. Lets the player switch
+/// between the three supported languages; the choice is persisted and applied
+/// app-wide immediately via [LocaleService].
+class _LanguageRow extends StatelessWidget {
+  const _LanguageRow({required this.onChanged});
+
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = LocaleService.instance.currentCode;
+    final codes = TranslationService.locales
+        .map((l) => l.languageCode)
+        .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'language'.tr,
+          style: const TextStyle(
+            color: Color(0xFFE8A33D),
+            fontSize: 16,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+        for (int i = 0; i < codes.length; i++)
+          GestureDetector(
+            onTap: () async {
+              if (codes[i] != current) {
+                await LocaleService.instance.setLanguage(codes[i]);
+                onChanged();
+              }
+            },
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: codes[i] == current
+                    ? const Color(0x55FF8C1A)
+                    : const Color(0x22FFFFFF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: codes[i] == current
+                      ? const Color(0xFFFF8C1A)
+                      : const Color(0x33FFFFFF),
+                ),
+              ),
+              child: Text(
+                TranslationService.langs[i],
+                style: TextStyle(
+                  color: codes[i] == current
+                      ? Colors.white
+                      : const Color(0xFFE8A33D),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          ],
         ),
       ],
     );

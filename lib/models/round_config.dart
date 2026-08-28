@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+
 import 'map_theme.dart';
 
 /// Configuration data for one racing round (tur).
@@ -36,9 +38,11 @@ class RoundConfig {
   /// Which map/art-set this round belongs to.
   final MapTheme theme;
 
-  String get title => 'Tur $roundIndex';
-  String get subtitle =>
-      '${distanceMeters.toInt()} m · $requiredCoins coin gerek';
+  String get title => 'round_title'.trParams({'n': '$roundIndex'});
+  String get subtitle => 'round_subtitle'.trParams({
+        'm': '${distanceMeters.toInt()}',
+        'coins': '$requiredCoins',
+      });
 
   /// Returns the round list for a given map theme.
   static List<RoundConfig> roundsFor(MapTheme theme) {

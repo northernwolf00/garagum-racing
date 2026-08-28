@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
@@ -36,7 +37,7 @@ class YangykalaLevelsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return LevelsScreen(
       theme: MapTheme.yangykala,
-      headerTitle: 'ÝAŇŇYKALA KANYONY',
+      headerTitle: 'header_yangykala'.tr,
       rounds: RoundConfig.yangykalaAll,
       gradientForRound: _gradientForRound,
     );

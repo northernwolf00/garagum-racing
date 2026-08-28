@@ -3,6 +3,7 @@ import 'package:flame/game.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 import '../game/garagum_racing_game.dart';
 import '../game/input/pedal_button.dart';
@@ -337,9 +338,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
     if (!shown && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reklama häzir taýýar däl, biraz soň synanyş.'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text('ad_not_ready'.tr),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -360,9 +361,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
     if (!shown && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reklama häzir taýýar däl, biraz soň synanyş.'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text('ad_not_ready'.tr),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -387,11 +388,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                 game: _game,
                 loadingBuilder: (context) => Container(
                   color: const Color(0xFF140A03),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 44,
                           height: 44,
                           child: CircularProgressIndicator(
@@ -401,10 +402,10 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Text(
-                          'ÝÜKLENÝÄR...',
-                          style: TextStyle(
+                          'loading'.tr,
+                          style: const TextStyle(
                             color: Color(0xFFFFD98C),
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -597,7 +598,10 @@ class _RoundLabel extends StatelessWidget {
         border: Border.all(color: Colors.white30, width: 1),
       ),
       child: Text(
-        'TUR $roundIndex / $totalRounds',
+        'lap_progress'.trParams({
+          'current': '$roundIndex',
+          'total': '$totalRounds',
+        }),
         style: const TextStyle(
           color: Color(0xFFFFD98C),
           fontSize: 12,
@@ -991,9 +995,9 @@ class _OutOfFuelOverlay extends StatelessWidget {
                   shaderCallback: (bounds) => const LinearGradient(
                     colors: [Color(0xFFFF8C00), Color(0xFFFFD700)],
                   ).createShader(bounds),
-                  child: const Text(
-                    'ÝANGYÇ GUTARDY!',
-                    style: TextStyle(
+                  child: Text(
+                    'out_of_fuel'.tr,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -1002,9 +1006,9 @@ class _OutOfFuelOverlay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Ýolda ýangyç bidonyny almagy unutmaň!',
-                  style: TextStyle(color: Color(0xFFFFD98C), fontSize: 12),
+                Text(
+                  'fuel_hint'.tr,
+                  style: const TextStyle(color: Color(0xFFFFD98C), fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -1012,7 +1016,7 @@ class _OutOfFuelOverlay extends StatelessWidget {
                 // placement, shown once per run.
                 if (onWatchAd != null) ...[
                   _RewardedAdButton(
-                    label: 'REKLAMA GÖR → DOWAM ET',
+                    label: 'watch_ad_continue'.tr,
                     icon: Icons.local_gas_station_rounded,
                     onTap: onWatchAd!,
                   ),
@@ -1022,7 +1026,7 @@ class _OutOfFuelOverlay extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'TÄZEDEN',
+                        label: 'retry'.tr,
                         icon: Icons.replay_rounded,
                         primary: true,
                         onTap: onRestart,
@@ -1031,7 +1035,7 @@ class _OutOfFuelOverlay extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'TURLAR',
+                        label: 'laps'.tr,
                         icon: Icons.list_rounded,
                         primary: false,
                         onTap: onLevels,
@@ -1040,7 +1044,7 @@ class _OutOfFuelOverlay extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'MENÝU',
+                        label: 'menu'.tr,
                         icon: Icons.home_rounded,
                         primary: false,
                         onTap: onMenu,
@@ -1105,9 +1109,9 @@ class _PauseOverlay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'DURALDY',
-                  style: TextStyle(
+                Text(
+                  'paused'.tr,
+                  style: const TextStyle(
                     color: Color(0xFFFFD98C),
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -1119,7 +1123,7 @@ class _PauseOverlay extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'DOWAM ET',
+                        label: 'resume'.tr,
                         icon: Icons.play_arrow_rounded,
                         primary: true,
                         onTap: onResume,
@@ -1128,7 +1132,7 @@ class _PauseOverlay extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'TÄZEDEN',
+                        label: 'retry'.tr,
                         icon: Icons.replay_rounded,
                         primary: false,
                         onTap: onRestart,
@@ -1137,7 +1141,7 @@ class _PauseOverlay extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'MENÝU',
+                        label: 'menu'.tr,
                         icon: Icons.home_rounded,
                         primary: false,
                         onTap: onMenu,
@@ -1219,9 +1223,9 @@ class _CrashOverlay extends StatelessWidget {
                   shaderCallback: (bounds) => const LinearGradient(
                     colors: [Color(0xFFFF4500), Color(0xFFFF8C1A)],
                   ).createShader(bounds),
-                  child: const Text(
-                    'AGDARYLDYŇYZ!',
-                    style: TextStyle(
+                  child: Text(
+                    'you_flipped'.tr,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -1234,7 +1238,7 @@ class _CrashOverlay extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Aralygyňyz: ${distanceMeters.floor()} m',
+                      'your_distance'.trParams({'m': '${distanceMeters.floor()}'}),
                       style: const TextStyle(
                         color: Color(0xFFFFD98C),
                         fontSize: 13,
@@ -1253,7 +1257,7 @@ class _CrashOverlay extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Toplanan: $coinsCollected',
+                      'collected'.trParams({'n': '$coinsCollected'}),
                       style: const TextStyle(
                         color: Color(0xFFFFD700),
                         fontSize: 13,
@@ -1267,7 +1271,7 @@ class _CrashOverlay extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'TÄZEDEN',
+                        label: 'retry'.tr,
                         icon: Icons.replay_rounded,
                         primary: true,
                         onTap: onRestart,
@@ -1276,7 +1280,7 @@ class _CrashOverlay extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'TURLAR',
+                        label: 'laps'.tr,
                         icon: Icons.list_rounded,
                         primary: false,
                         onTap: onLevels,
@@ -1285,7 +1289,7 @@ class _CrashOverlay extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _OverlayBtn(
-                        label: 'MENÝU',
+                        label: 'menu'.tr,
                         icon: Icons.home_rounded,
                         primary: false,
                         onTap: onMenu,
@@ -1458,7 +1462,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
                                     ],
                             ).createShader(bounds),
                             child: Text(
-                              passed ? 'TAMAMLADY!' : 'TUR GUTARDY',
+                              passed ? 'completed'.tr : 'lap_over'.tr,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -1536,9 +1540,11 @@ class _FinishOverlayState extends State<_FinishOverlay>
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              passed
-                                  ? '${widget.coinsCollected}/${widget.round.requiredCoins} GEÇDI!'
-                                  : '${widget.coinsCollected}/${widget.round.requiredCoins} ÝETMEDİ',
+                              (passed ? 'coins_passed' : 'coins_not_enough')
+                                  .trParams({
+                                'collected': '${widget.coinsCollected}',
+                                'required': '${widget.round.requiredCoins}',
+                              }),
                               style: TextStyle(
                                 color: passed
                                     ? const Color(0xFF76FF03)
@@ -1628,7 +1634,8 @@ class _FinishOverlayState extends State<_FinishOverlay>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'TUR ${widget.round.roundIndex + 1} AÇYLDY!',
+                            'lap_unlocked'.trParams(
+                                {'lap': '${widget.round.roundIndex + 1}'}),
                             style: const TextStyle(
                               color: Color(0xFF76FF03),
                               fontWeight: FontWeight.w800,
@@ -1656,15 +1663,15 @@ class _FinishOverlayState extends State<_FinishOverlay>
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFF76FF03)),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.check_circle_rounded,
+                            const Icon(Icons.check_circle_rounded,
                                 color: Color(0xFF76FF03), size: 16),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Text(
-                              'TEŇŇE 2× EDİLDİ!',
-                              style: TextStyle(
+                              'coins_doubled'.tr,
+                              style: const TextStyle(
                                 color: Color(0xFF76FF03),
                                 fontWeight: FontWeight.w800,
                                 fontSize: 12,
@@ -1676,7 +1683,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
                       )
                     else
                       _RewardedAdButton(
-                        label: 'REKLAMA GÖR → TEŇŇÄŇI 2× ET',
+                        label: 'watch_ad_double'.tr,
                         icon: Icons.monetization_on_rounded,
                         onTap: widget.onDoubleCoins,
                       ),
@@ -1691,7 +1698,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
                         Expanded(
                           flex: 5,
                           child: _OverlayBtn(
-                            label: 'INDIKI TUR',
+                            label: 'next_lap'.tr,
                             icon: Icons.play_arrow_rounded,
                             primary: true,
                             onTap: widget.onNextLevel!,
@@ -1702,7 +1709,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
                       Expanded(
                         flex: 4,
                         child: _OverlayBtn(
-                          label: 'TURLAR',
+                          label: 'laps'.tr,
                           icon: Icons.list_rounded,
                           primary: !nextUnlocked,
                           onTap: widget.onLevels,
@@ -1712,7 +1719,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
                       Expanded(
                         flex: 4,
                         child: _OverlayBtn(
-                          label: 'TÄZEDEN',
+                          label: 'retry'.tr,
                           icon: Icons.replay_rounded,
                           primary: false,
                           onTap: widget.onRestart,
@@ -1722,7 +1729,7 @@ class _FinishOverlayState extends State<_FinishOverlay>
                       Expanded(
                         flex: 4,
                         child: _OverlayBtn(
-                          label: 'MENÝU',
+                          label: 'menu'.tr,
                           icon: Icons.home_rounded,
                           primary: false,
                           onTap: widget.onMenu,
@@ -1899,16 +1906,16 @@ class _NextGateBar extends StatelessWidget {
     if (gate.isMapGate) {
       switch (gate.theme) {
         case MapTheme.garagum:
-          return 'Garagum kartasy';
+          return 'map_garagum_short'.tr;
         case MapTheme.ashgabat:
-          return 'Aşgabat kartasy';
+          return 'map_ashgabat_short'.tr;
         case MapTheme.yangykala:
-          return 'Ýaňňykala kartasy';
+          return 'map_yangykala_short'.tr;
         case MapTheme.derweze:
-          return 'Derweze kartasy';
+          return 'map_derweze_short'.tr;
       }
     }
-    return '${gate.round}-nji tur';
+    return 'gate_lap'.trParams({'round': '${gate.round}'});
   }
 
   @override
@@ -1932,7 +1939,9 @@ class _NextGateBar extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  ready ? '$_label — açmaga taýýar!' : '$_label açmaga',
+                  ready
+                      ? 'gate_ready'.trParams({'label': _label})
+                      : 'gate_to_unlock'.trParams({'label': _label}),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFFFFD98C),
@@ -1976,7 +1985,7 @@ class _NextGateBar extends StatelessWidget {
           if (!ready) ...[
             const SizedBox(height: 4),
             Text(
-              'ýene $remaining teňňe',
+              'more_coins'.trParams({'n': '$remaining'}),
               style: const TextStyle(
                 color: Color(0xFF8A6A3F),
                 fontSize: 10,
