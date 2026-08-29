@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -191,6 +192,34 @@ class AdService {
     );
   }
 
+  /// Loads a rewarded ad on demand and completes with it (or null on
+  /// failure/timeout). Used when the user taps "watch ad" but nothing was
+  /// preloaded yet — e.g. right after launch or after a failed preload.
+  Future<RewardedAd?> _loadRewardedNow() {
+    final completer = Completer<RewardedAd?>();
+    _loadingRewarded = true;
+    RewardedAd.load(
+      adUnitId: _rewardedUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _loadingRewarded = false;
+          if (!completer.isCompleted) completer.complete(ad);
+        },
+        onAdFailedToLoad: (error) {
+          debugPrint('[ads] rewarded on-demand load failed: $error');
+          _loadingRewarded = false;
+          if (!completer.isCompleted) completer.complete(null);
+        },
+      ),
+    );
+    // Don't leave the user waiting forever if the network stalls.
+    return completer.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => null,
+    );
+  }
+
   /// True if a rewarded ad is loaded and ready to show right now.
   bool get isRewardedReady => _rewarded != null;
 
@@ -198,12 +227,17 @@ class AdService {
   /// (watches long enough). Returns true if an ad was actually shown.
   /// Rewarded ads are available even to no-ads / VIP users — they're opt-in.
   Future<bool> showRewarded({required VoidCallback onReward}) async {
-    final ad = _rewarded;
+    // Use the preloaded ad if we have one; otherwise try to load one right now
+    // (the preload may have failed or not finished yet). Only give up — and let
+    // the caller show "not ready" — when even an on-demand load can't produce
+    // an ad (e.g. AdMob returns no-fill / 403).
+    var ad = _rewarded;
+    _rewarded = null;
+    ad ??= await _loadRewardedNow();
     if (ad == null) {
-      _loadRewarded();
+      _loadRewarded(); // keep trying in the background for next time
       return false;
     }
-    _rewarded = null;
     var earned = false;
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
