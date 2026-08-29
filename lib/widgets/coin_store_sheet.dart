@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../services/ad_service.dart';
 import '../services/game_progress_service.dart';
@@ -54,9 +55,9 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
     setState(() => _busy = false);
     if (!shown) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reklama entek taýýar däl, biraz soň synan'),
-          backgroundColor: Color(0xFF3D1A06),
+        SnackBar(
+          content: Text('ad_not_ready'.tr),
+          backgroundColor: const Color(0xFF3D1A06),
         ),
       );
     }
@@ -119,9 +120,9 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'TEŇŇE AL',
-                style: TextStyle(
+              Text(
+                'get_coins'.tr,
+                style: const TextStyle(
                   color: Color(0xFFFFD98C),
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
@@ -132,7 +133,7 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Balans: ${_progress.getTotalCoins()} teňňe',
+            'balance_coins'.trParams({'n': '${_progress.getTotalCoins()}'}),
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFF8A6A3F),
@@ -176,7 +177,8 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Reklama gör → +${GameProgressService.rewardAdCoins}',
+                          'watch_ad_plus'.trParams(
+                              {'n': '${GameProgressService.rewardAdCoins}'}),
                           style: TextStyle(
                             color: canWatch
                                 ? Colors.white
@@ -188,8 +190,12 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
                         const SizedBox(height: 2),
                         Text(
                           remaining > 0
-                              ? 'Günde $remaining/${GameProgressService.rewardAdDailyCap} galdy'
-                              : 'Şu gün gutardy — ertir ýene gel',
+                              ? 'ads_left_today'.trParams({
+                                  'remaining': '$remaining',
+                                  'cap':
+                                      '${GameProgressService.rewardAdDailyCap}',
+                                })
+                              : 'ads_done_today'.tr,
                           style: const TextStyle(
                             color: Color(0xFF8A6A3F),
                             fontSize: 11,
@@ -215,7 +221,7 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
           if (_justEarned > 0) ...[
             const SizedBox(height: 8),
             Text(
-              '+$_justEarned teňňe alyndy! 🎉',
+              'coins_claimed'.trParams({'n': '$_justEarned'}),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Color(0xFF44FF88),
@@ -227,20 +233,20 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
 
           const SizedBox(height: 16),
           Row(
-            children: const [
-              Expanded(child: Divider(color: Color(0x33E8A33D))),
+            children: [
+              const Expanded(child: Divider(color: Color(0x33E8A33D))),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
-                  'ýa satyn al',
-                  style: TextStyle(
+                  'or_buy'.tr,
+                  style: const TextStyle(
                     color: Color(0xFF8A6A3F),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              Expanded(child: Divider(color: Color(0x33E8A33D))),
+              const Expanded(child: Divider(color: Color(0x33E8A33D))),
             ],
           ),
           const SizedBox(height: 12),
@@ -266,15 +272,15 @@ class _CoinStoreSheetState extends State<_CoinStoreSheet> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0x55FFD700)),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.workspace_premium_rounded,
+                  const Icon(Icons.workspace_premium_rounded,
                       color: Color(0xFFFFD700), size: 18),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'Reklamasyz bol (Pro)',
-                    style: TextStyle(
+                    'go_ad_free'.tr,
+                    style: const TextStyle(
                       color: Color(0xFFFFD700),
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
@@ -327,7 +333,7 @@ class _CoinPackRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              '$amount teňňe',
+              'amount_coins'.trParams({'n': '$amount'}),
               style: const TextStyle(
                 color: Color(0xFFFFD98C),
                 fontSize: 15,

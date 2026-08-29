@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+
 /// The four upgradeable vehicle stats.
 enum UpgradeType { engine, suspension, tires, fuel }
 
@@ -5,16 +7,17 @@ extension UpgradeTypeInfo on UpgradeType {
   /// Persistence key fragment — must stay stable across releases.
   String get id => name;
 
+  /// Localized stat name.
   String get label {
     switch (this) {
       case UpgradeType.engine:
-        return 'Motor';
+        return 'engine'.tr;
       case UpgradeType.suspension:
-        return 'Asma';
+        return 'suspension'.tr;
       case UpgradeType.tires:
-        return 'Tekerler';
+        return 'tires'.tr;
       case UpgradeType.fuel:
-        return 'Ýangyç tanky';
+        return 'fuel_tank'.tr;
     }
   }
 }

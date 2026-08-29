@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
@@ -36,7 +37,7 @@ class DerwezeLevelsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return LevelsScreen(
       theme: MapTheme.derweze,
-      headerTitle: 'DERWEZE (GAZ KRATERI)',
+      headerTitle: 'header_derweze'.tr,
       rounds: RoundConfig.derwezeAll,
       gradientForRound: _gradientForRound,
     );

@@ -1,5 +1,6 @@
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../../models/upgrade_config.dart';
 import '../../models/vehicle_config.dart';
@@ -74,9 +75,9 @@ class _GarageScreenState extends State<GarageScreen>
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ýeterlik teňňe ýok!'),
-          backgroundColor: Color(0xFF3D1A06),
+        SnackBar(
+          content: Text('not_enough_coins'.tr),
+          backgroundColor: const Color(0xFF3D1A06),
         ),
       );
       return;
@@ -87,7 +88,7 @@ class _GarageScreenState extends State<GarageScreen>
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${v.name} satyn alyndy!'),
+        content: Text('purchased'.trParams({'name': v.displayName})),
         backgroundColor: const Color(0xFF1C3D06),
       ),
     );
@@ -98,9 +99,9 @@ class _GarageScreenState extends State<GarageScreen>
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ýeterlik teňňe ýok!'),
-          backgroundColor: Color(0xFF3D1A06),
+        SnackBar(
+          content: Text('not_enough_coins'.tr),
+          backgroundColor: const Color(0xFF3D1A06),
         ),
       );
       return;
@@ -205,9 +206,9 @@ class _GarageScreenState extends State<GarageScreen>
                             ),
                           ),
                           const SizedBox(width: 16),
-                          const Text(
-                            'GARAJ',
-                            style: TextStyle(
+                          Text(
+                            'garage'.tr,
+                            style: const TextStyle(
                               color: Color(0xFFFFD98C),
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
@@ -276,7 +277,7 @@ class _GarageScreenState extends State<GarageScreen>
                                   if (!owned)
                                     const SizedBox(width: 4),
                                   Text(
-                                    v.name,
+                                    v.displayName,
                                     style: TextStyle(
                                       color: selected
                                           ? Colors.white
@@ -397,7 +398,7 @@ class _GarageScreenState extends State<GarageScreen>
                           Row(
                             children: [
                               Text(
-                                vehicle.name.toUpperCase(),
+                                vehicle.displayName.toUpperCase(),
                                 style: const TextStyle(
                                   color: Color(0xFFFFD98C),
                                   fontSize: 18,
@@ -416,9 +417,9 @@ class _GarageScreenState extends State<GarageScreen>
                                     border: Border.all(
                                         color: const Color(0x66FF8C1A)),
                                   ),
-                                  child: const Text(
-                                    'SAÝLANAN',
-                                    style: TextStyle(
+                                  child: Text(
+                                    'selected'.tr,
+                                    style: const TextStyle(
                                       color: Color(0xFFFF8C1A),
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
@@ -432,16 +433,17 @@ class _GarageScreenState extends State<GarageScreen>
                           if (vehicleOwned)
                             ..._buildUpgradeRows(vehicle)
                           else ...[
-                            _StatBar(label: 'MOTOR', value: vehicle.engine,
+                            _StatBar(label: 'engine'.tr, value: vehicle.engine,
                                 icon: Icons.bolt),
                             const SizedBox(height: 10),
-                            _StatBar(label: 'ASMA', value: vehicle.suspension,
+                            _StatBar(label: 'suspension'.tr,
+                                value: vehicle.suspension,
                                 icon: Icons.compress),
                             const SizedBox(height: 10),
-                            _StatBar(label: 'TEKERLEKLER', value: vehicle.tires,
+                            _StatBar(label: 'tires'.tr, value: vehicle.tires,
                                 icon: Icons.circle_outlined),
                             const SizedBox(height: 10),
-                            _StatBar(label: 'ÝANGYÇ TANKY', value: vehicle.fuel,
+                            _StatBar(label: 'fuel_tank'.tr, value: vehicle.fuel,
                                 icon: Icons.local_gas_station),
                           ],
                         ],
@@ -455,7 +457,7 @@ class _GarageScreenState extends State<GarageScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: vehicleOwned
                           ? _ActionButton(
-                              label: 'SAÝLA WE OÝNA',
+                              label: 'select_and_play'.tr,
                               icon: Icons.check_circle_rounded,
                               primary: true,
                               onTap: () async {
@@ -467,7 +469,8 @@ class _GarageScreenState extends State<GarageScreen>
                               },
                             )
                           : _ActionButton(
-                              label: 'SAT AL — ${vehicle.unlockCost} teňňe',
+                              label: 'buy_for'
+                                  .trParams({'n': '${vehicle.unlockCost}'}),
                               icon: Icons.lock_open_rounded,
                               primary: false,
                               onTap: () => _buyVehicle(vehicle),
@@ -714,10 +717,10 @@ class _UpgradeRow extends StatelessWidget {
               ),
             ),
             child: cost == null
-                ? const Text(
-                    'MAX',
+                ? Text(
+                    'max'.tr,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF44FF88),
                       fontSize: 11,
                       fontWeight: FontWeight.w800,

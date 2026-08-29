@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+
 /// Definition of a vehicle in Garagum Racing.
 class VehicleConfig {
   final String id;
@@ -27,6 +29,19 @@ class VehicleConfig {
     required this.unlocked,
     required this.unlockCost,
   });
+
+  /// Localized display name. Falls back to the raw [name] if no translation
+  /// exists for this vehicle id.
+  String get displayName {
+    const keyById = {
+      'buggy': 'vehicle_buggy',
+      'uaz': 'vehicle_uaz',
+      'ak_ulag': 'vehicle_white',
+      'pikap': 'vehicle_pickup',
+    };
+    final key = keyById[id];
+    return key != null ? key.tr : name;
+  }
 
   String get fullBodyAsset => bodyAsset.startsWith('assets/') ? bodyAsset : 'assets/images/$bodyAsset';
   String get fullWheelAsset => wheelAsset.startsWith('assets/') ? wheelAsset : 'assets/images/$wheelAsset';

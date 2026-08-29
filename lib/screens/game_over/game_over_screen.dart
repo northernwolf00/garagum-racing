@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../levels/garagum_levels_screen.dart';
 import '../menu/menu_screen.dart';
@@ -118,7 +119,7 @@ class _GameOverScreenState extends State<GameOverScreen>
                     child: Column(
                       children: [
                         Text(
-                          'OÝUN',
+                          'game'.tr,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 56,
@@ -139,7 +140,7 @@ class _GameOverScreenState extends State<GameOverScreen>
                           ),
                         ),
                         Text(
-                          'GUTARDY',
+                          'over'.tr,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 38,
@@ -180,9 +181,9 @@ class _GameOverScreenState extends State<GameOverScreen>
                     ),
                     child: Column(
                       children: [
-                        const Text(
-                          'NETIJELERIŇ',
-                          style: TextStyle(
+                        Text(
+                          'your_results'.tr,
+                          style: const TextStyle(
                             color: Color(0xFF886633),
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -193,7 +194,7 @@ class _GameOverScreenState extends State<GameOverScreen>
                         _StatRow(
                           icon: 'assets/images/ui/icon_distance.png',
                           fallbackIcon: Icons.straighten,
-                          label: 'ARALYGY',
+                          label: 'distance'.tr,
                           value:
                               '${widget.distanceMeters.toStringAsFixed(0)} m',
                         ),
@@ -204,7 +205,7 @@ class _GameOverScreenState extends State<GameOverScreen>
                         _StatRow(
                           icon: 'assets/images/ui/coin.png',
                           fallbackIcon: Icons.monetization_on,
-                          label: 'TEŇŇELER',
+                          label: 'coins'.tr,
                           value: '${widget.coinsCollected}',
                         ),
                       ],
@@ -222,14 +223,14 @@ class _GameOverScreenState extends State<GameOverScreen>
                     child: Column(
                       children: [
                         _GameOverButton(
-                          label: 'TÄZEDEN OÝNA',
+                          label: 'play_again'.tr,
                           icon: Icons.replay_rounded,
                           primary: true,
                           onTap: _restart,
                         ),
                         const SizedBox(height: 14),
                         _GameOverButton(
-                          label: 'BAŞ MENÝU',
+                          label: 'main_menu'.tr,
                           icon: Icons.home_rounded,
                           primary: false,
                           onTap: _goMenu,
