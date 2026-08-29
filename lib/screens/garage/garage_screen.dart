@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 import '../../models/upgrade_config.dart';
 import '../../models/vehicle_config.dart';
 import '../../services/game_progress_service.dart';
+import '../../services/sfx.dart';
+import '../../widgets/animated_coins.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/coin_store_sheet.dart';
 
@@ -85,6 +87,7 @@ class _GarageScreenState extends State<GarageScreen>
     await GameProgressService.instance.ownVehicle(v.id);
     await GameProgressService.instance.setSelectedVehicle(v.id);
     if (!mounted) return;
+    Sfx.unlock();
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -106,6 +109,7 @@ class _GarageScreenState extends State<GarageScreen>
       );
       return;
     }
+    Sfx.coins();
     setState(() {});
   }
 
@@ -856,8 +860,8 @@ class _CoinDisplay extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            '$coins',
+          AnimatedCoins(
+            coins,
             style: const TextStyle(
               color: Color(0xFFFFD98C),
               fontWeight: FontWeight.w700,
