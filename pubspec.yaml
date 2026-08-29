@@ -23,6 +23,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   get: ^4.6.6
   google_fonts: ^6.2.1
+  url_launcher: ^6.3.1
   flame: ^1.35.1
   flame_forge2d: ^0.19.2+4
   flame_audio: ^2.11.5

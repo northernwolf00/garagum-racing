@@ -8,6 +8,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// url_launcher pulls in androidx.browser transitively for Custom Tabs. Pin it
+// to 1.8.0 — a stable, widely-cached version that the mailto/support link works
+// fine with — to keep dependency resolution predictable across environments.
+configurations.all {
+    resolutionStrategy {
+        force("androidx.browser:browser:1.8.0")
+    }
+}
+
 // Release signing config is read from android/key.properties (git-ignored).
 // When that file is absent (e.g. a fresh clone), release falls back to debug
 // signing so `flutter run --release` still works locally.
