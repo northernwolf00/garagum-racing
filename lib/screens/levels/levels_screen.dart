@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../models/gate_config.dart';
 import '../../models/map_theme.dart';
 import '../../models/round_config.dart';
+import '../../services/app_settings.dart';
 import '../../services/game_progress_service.dart';
 import '../../services/purchase_service.dart';
 import '../../widgets/coin_store_sheet.dart';
@@ -72,7 +73,9 @@ class _LevelsScreenState extends State<LevelsScreen>
   // menu instead.
   void _onBack() {
     try {
-      FlameAudio.play('sfx/button_back.wav', volume: 0.7);
+      if (AppSettings.instance.sfx.value) {
+        FlameAudio.play('sfx/button_back.wav', volume: 0.7);
+      }
     } catch (_) {}
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
@@ -111,13 +114,17 @@ class _LevelsScreenState extends State<LevelsScreen>
 
   void _playSelectSound() {
     try {
-      FlameAudio.play('sfx/button_select.wav', volume: 0.8);
+      if (AppSettings.instance.sfx.value) {
+        FlameAudio.play('sfx/button_select.wav', volume: 0.8);
+      }
     } catch (_) {}
   }
 
   void _playLockedSound() {
     try {
-      FlameAudio.play('sfx/button_locked.wav', volume: 0.8);
+      if (AppSettings.instance.sfx.value) {
+        FlameAudio.play('sfx/button_locked.wav', volume: 0.8);
+      }
     } catch (_) {}
   }
 

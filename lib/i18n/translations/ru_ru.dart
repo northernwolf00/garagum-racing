@@ -79,6 +79,30 @@ final Map<String, String> ruRU = {
   'restore_failed': 'Не удалось восстановить.',
   'language': 'Язык',
 
+  // Settings screen sections
+  'audio': 'ЗВУК',
+  'general': 'ОБЩИЕ',
+  'purchases_section': 'ПОКУПКИ',
+  'about': 'О ПРИЛОЖЕНИИ',
+  'choose_language': 'Выберите язык',
+  'version': 'Версия',
+  'developer': 'Разработчик',
+  'developer_name': 'Garagum Games',
+
+  // About screen
+  'about_us': 'О нас',
+  'about_us_body':
+      'Garagum Racing — внедорожное гоночное приключение по Туркменистану: '
+          'мчитесь по пустыне Гарагум, беломраморным улицам Ашхабада, '
+          'каньонам Янгыкала и огненному газовому кратеру Дарваза. Улучшайте '
+          'машины, проходите заезды и собирайте монеты по пути.',
+  'rate_us': 'Оценить игру',
+  'share_app': 'Поделиться игрой',
+  'privacy_policy': 'Политика конфиденциальности',
+  'contact_us': 'Связаться с нами',
+  'made_with_love': 'Сделано с ❤️ в Туркменистане',
+  'coming_soon': 'Скоро',
+
   // Game over
   'game': 'ИГРА',
   'over': 'ОКОНЧЕНА',

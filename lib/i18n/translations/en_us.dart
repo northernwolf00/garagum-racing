@@ -79,6 +79,31 @@ final Map<String, String> enUS = {
   'restore_failed': 'Restore failed.',
   'language': 'Language',
 
+  // Settings screen sections
+  'audio': 'AUDIO',
+  'general': 'GENERAL',
+  'purchases_section': 'PURCHASES',
+  'about': 'ABOUT',
+  'choose_language': 'Choose your language',
+  'version': 'Version',
+  'developer': 'Developer',
+  'developer_name': 'Garagum Games',
+
+  // About screen
+  'about_us': 'About Us',
+  'about_us_body':
+      'Garagum Racing is an off-road racing adventure across Turkmenistan — '
+          'tear through the Garagum desert, the white-marble streets of '
+          'Ashgabat, the Yangykala canyons and the fiery Derweze gas crater. '
+          'Upgrade your vehicles, master every lap and collect coins along '
+          'the way.',
+  'rate_us': 'Rate the game',
+  'share_app': 'Share the game',
+  'privacy_policy': 'Privacy Policy',
+  'contact_us': 'Contact us',
+  'made_with_love': 'Made with ❤️ in Turkmenistan',
+  'coming_soon': 'Coming soon',
+
   // Game over
   'game': 'GAME',
   'over': 'OVER',

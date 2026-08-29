@@ -7,6 +7,7 @@ import 'i18n/locale_service.dart';
 import 'i18n/translation_service.dart';
 import 'screens/menu/menu_screen.dart';
 import 'services/ad_service.dart';
+import 'services/app_settings.dart';
 import 'services/game_progress_service.dart';
 import 'services/purchase_service.dart';
 
@@ -16,6 +17,9 @@ void main() async {
   // Load the saved UI language before the first frame so the menu renders in
   // the player's chosen language from the very first paint.
   await LocaleService.instance.init();
+
+  // Load persisted audio preferences (music / sfx toggles).
+  await AppSettings.instance.init();
 
   // Load saved coins/round-progress before the first frame, so every screen
   // (menu coin badge, level unlock state) always reads real persisted data

@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../i18n/locale_service.dart';
-import '../../i18n/translation_service.dart';
+import '../../services/app_settings.dart';
 import '../../services/game_progress_service.dart';
-import '../../services/purchase_service.dart';
+import '../settings/settings_screen.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/coin_store_sheet.dart';
 import '../levels/ashgabat_levels_screen.dart';
@@ -36,7 +35,9 @@ class _MenuScreenState extends State<MenuScreen>
   late final PageController _mapPageController;
   int _selectedMapIndex = 0;
   int _totalCoins = 0;
-  bool _soundOn = true;
+  // Menu music follows the persistent app-wide Music setting so the speaker
+  // icon here and the toggle on the settings screen stay in sync.
+  bool get _soundOn => AppSettings.instance.music.value;
 
   final List<_MapItem> _maps = const [
     _MapItem(
@@ -145,7 +146,8 @@ class _MenuScreenState extends State<MenuScreen>
   }
 
   void _toggleSound() {
-    setState(() => _soundOn = !_soundOn);
+    AppSettings.instance.setMusic(!_soundOn);
+    setState(() {});
     if (_soundOn) {
       _startMenuMusic();
     } else {
@@ -243,12 +245,12 @@ class _MenuScreenState extends State<MenuScreen>
     });
   }
 
-  void _onSettings() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _SettingsSheet(),
+  Future<void> _onSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
     );
+    // Language may have changed — rebuild so localized menu text refreshes.
+    if (mounted) setState(() {});
   }
 
   void _refreshCoins() {
@@ -1305,304 +1307,6 @@ class _DailyRewardSheetState extends State<_DailyRewardSheet> {
             ),
         ],
       ),
-    );
-  }
-}
-
-// ─── Settings Sheet ──────────────────────────────────────────────────────────
-
-class _SettingsSheet extends StatefulWidget {
-  const _SettingsSheet();
-
-  @override
-  State<_SettingsSheet> createState() => _SettingsSheetState();
-}
-
-class _SettingsSheetState extends State<_SettingsSheet> {
-  bool _music = true;
-  bool _sfx = true;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C0E06),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x44E8A33D)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0x66E8A33D),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'settings'.tr,
-            style: const TextStyle(
-              color: Color(0xFFFFD98C),
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 4,
-            ),
-          ),
-          const SizedBox(height: 24),
-          _SettingRow(
-            label: 'music'.tr,
-            value: _music,
-            onChanged: (v) => setState(() => _music = v),
-          ),
-          const SizedBox(height: 16),
-          _SettingRow(
-            label: 'sound_effects'.tr,
-            value: _sfx,
-            onChanged: (v) => setState(() => _sfx = v),
-          ),
-          const SizedBox(height: 16),
-          _LanguageRow(onChanged: () => setState(() {})),
-          const SizedBox(height: 20),
-          const Divider(color: Color(0x22E8A33D), height: 1),
-          const SizedBox(height: 16),
-
-          // Premium / no-ads. The button rebuilds live via the entitlement
-          // notifier: once "remove ads" is owned it turns into a status chip.
-          ValueListenableBuilder<bool>(
-            valueListenable: PurchaseService.instance.noAdsNotifier,
-            builder: (context, noAds, _) {
-              if (noAds || PurchaseService.instance.isVip) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0x2276FF03),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0x5576FF03)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.verified_rounded,
-                          color: Color(0xFF76FF03), size: 20),
-                      const SizedBox(width: 10),
-                      Text(
-                        'ad_free_active'.tr,
-                        style: const TextStyle(
-                          color: Color(0xFF76FF03),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return _SettingsActionButton(
-                label: 'remove_ads'.tr,
-                icon: Icons.block_rounded,
-                primary: true,
-                onTap: () =>
-                    PurchaseService.instance.presentPaywallIfNeeded(
-                  PurchaseService.entitlementNoAds,
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _SettingsActionButton(
-            label: 'restore_purchases'.tr,
-            icon: Icons.restore_rounded,
-            primary: false,
-            onTap: () async {
-              final ok =
-                  await PurchaseService.instance.restorePurchases();
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                      ok ? 'purchases_restored'.tr : 'restore_failed'.tr),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool primary;
-  final VoidCallback onTap;
-
-  const _SettingsActionButton({
-    required this.label,
-    required this.icon,
-    required this.primary,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 50,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: primary
-              ? const LinearGradient(
-                  colors: [Color(0xFFFF8C1A), Color(0xFFE85A00)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: primary ? null : const Color(0x22E8A33D),
-          border: Border.all(
-            color: primary ? const Color(0xFFFFAA44) : const Color(0x44E8A33D),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                color: primary ? Colors.white : const Color(0xFFE8A33D),
-                size: 20),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: primary ? Colors.white : const Color(0xFFE8A33D),
-                letterSpacing: 1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingRow extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SettingRow({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFFE8A33D),
-            fontSize: 16,
-            letterSpacing: 1,
-          ),
-        ),
-        const Spacer(),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: const Color(0xFFFF8C1A),
-          trackColor: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.selected)
-                ? const Color(0x55FF8C1A)
-                : const Color(0x33FFFFFF),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Language picker row shown in the settings sheet. Lets the player switch
-/// between the three supported languages; the choice is persisted and applied
-/// app-wide immediately via [LocaleService].
-class _LanguageRow extends StatelessWidget {
-  const _LanguageRow({required this.onChanged});
-
-  final VoidCallback onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final current = LocaleService.instance.currentCode;
-    final codes = TranslationService.locales
-        .map((l) => l.languageCode)
-        .toList(growable: false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'language'.tr,
-          style: const TextStyle(
-            color: Color(0xFFE8A33D),
-            fontSize: 16,
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-        for (int i = 0; i < codes.length; i++)
-          GestureDetector(
-            onTap: () async {
-              if (codes[i] != current) {
-                await LocaleService.instance.setLanguage(codes[i]);
-                onChanged();
-              }
-            },
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: codes[i] == current
-                    ? const Color(0x55FF8C1A)
-                    : const Color(0x22FFFFFF),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: codes[i] == current
-                      ? const Color(0xFFFF8C1A)
-                      : const Color(0x33FFFFFF),
-                ),
-              ),
-              child: Text(
-                TranslationService.langs[i],
-                style: TextStyle(
-                  color: codes[i] == current
-                      ? Colors.white
-                      : const Color(0xFFE8A33D),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          ],
-        ),
-      ],
     );
   }
 }

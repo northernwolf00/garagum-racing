@@ -80,6 +80,30 @@ final Map<String, String> trTR = {
   'restore_failed': 'Dikeltmek başartmady.',
   'language': 'Dil',
 
+  // Settings screen sections
+  'audio': 'SES',
+  'general': 'UMUMY',
+  'purchases_section': 'SATYN ALYŞLAR',
+  'about': 'BARADA',
+  'choose_language': 'Diliňizi saýlaň',
+  'version': 'Wersiýa',
+  'developer': 'Işläp düzüji',
+  'developer_name': 'Garagum Games',
+
+  // About screen
+  'about_us': 'Biz barada',
+  'about_us_body':
+      'Garagum Racing — Türkmenistanyň üsti bilen ýoldan çykýan awtoulag '
+          'ýaryşy: Garagum çölünden, Aşgabadyň ak mermer köçelerinden, '
+          'Ýaňňykala kanyonlaryndan we Derwezäniň otly gaz kraterinden geçiň. '
+          'Ulaglaryňyzy kämilleşdiriň, her tury geçiň we ýolboýy teňňe toplaň.',
+  'rate_us': 'Oýny bahalandyryň',
+  'share_app': 'Oýny paýlaşyň',
+  'privacy_policy': 'Gizlinlik syýasaty',
+  'contact_us': 'Biz bilen habarlaşyň',
+  'made_with_love': 'Türkmenistanda ❤️ bilen ýasaldy',
+  'coming_soon': 'Ýakynda',
+
   // Game over
   'game': 'OÝUN',
   'over': 'GUTARDY',
