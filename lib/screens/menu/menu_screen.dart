@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 
 import '../../services/app_settings.dart';
 import '../../services/game_progress_service.dart';
+import '../../services/sfx.dart';
+import '../../widgets/animated_coins.dart';
 import '../settings/settings_screen.dart';
 import '../../widgets/ad_banner.dart';
 import '../../widgets/coin_store_sheet.dart';
@@ -943,6 +945,7 @@ class _MenuButtonState extends State<_MenuButton>
       onTapDown: (_) => _ctrl.forward(),
       onTapUp: (_) {
         _ctrl.reverse();
+        Sfx.tap();
         widget.onTap();
       },
       onTapCancel: () => _ctrl.reverse(),
@@ -1034,8 +1037,8 @@ class _CoinBadge extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            '$coins',
+          AnimatedCoins(
+            coins,
             style: const TextStyle(
               color: Color(0xFFFFD98C),
               fontWeight: FontWeight.w700,
@@ -1161,6 +1164,7 @@ class _DailyRewardSheetState extends State<_DailyRewardSheet> {
   Future<void> _claim() async {
     final reward = await _progress.claimDailyReward();
     if (!mounted) return;
+    Sfx.coins();
     setState(() => _claimed = reward);
   }
 

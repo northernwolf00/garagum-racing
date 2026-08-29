@@ -12,6 +12,7 @@ import '../models/map_theme.dart';
 import '../models/round_config.dart';
 import '../services/ad_service.dart';
 import '../services/game_progress_service.dart';
+import '../services/sfx.dart';
 import 'levels/ashgabat_levels_screen.dart';
 import 'levels/derweze_levels_screen.dart';
 import 'levels/garagum_levels_screen.dart';
@@ -72,6 +73,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
   late final AnimationController _hudCtrl;
   late final Animation<double> _hudFade;
 
+  // Short camera-shake played on crash for extra impact.
+  late final AnimationController _shakeCtrl;
+
   RoundConfig get _round => widget.roundConfig;
 
   @override
@@ -106,12 +110,18 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     );
     _hudFade = CurvedAnimation(parent: _hudCtrl, curve: Curves.easeOut);
     _hudCtrl.forward();
+
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
   }
 
   @override
   void dispose() {
     _game.audio.dispose();
     _hudCtrl.dispose();
+    _shakeCtrl.dispose();
     super.dispose();
   }
 
@@ -134,6 +144,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _brakePressed = false;
     _saveCoins();
     AdService.instance.recordRunEnded();
+    // Crash feedback: sound + heavy haptic + a quick camera shake.
+    Sfx.crash();
+    _shakeCtrl.forward(from: 0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _crashed = true);
     });
@@ -150,6 +163,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     // the current game render frame.
     await _saveProgress();
     AdService.instance.recordRunEnded();
+    Sfx.levelComplete();
     if (mounted) setState(() => _finished = true);
   }
 
@@ -384,8 +398,23 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
           children: [
             // ── Game canvas ──────────────────────────────────────────────
             Positioned.fill(
-              child: GameWidget<GaragumRacingGame>(
-                game: _game,
+              child: AnimatedBuilder(
+                animation: _shakeCtrl,
+                builder: (context, child) {
+                  // Decaying shake: strong at impact, settles to zero. When the
+                  // controller sits at 0 the offset is 0, so there is no cost.
+                  final t = _shakeCtrl.value;
+                  if (t == 0) return child!;
+                  final damp = 1 - t;
+                  final dx = math.sin(t * math.pi * 8) * 12 * damp;
+                  final dy = math.cos(t * math.pi * 7) * 8 * damp;
+                  return Transform.translate(
+                    offset: Offset(dx, dy),
+                    child: child,
+                  );
+                },
+                child: GameWidget<GaragumRacingGame>(
+                  game: _game,
                 loadingBuilder: (context) => Container(
                   color: const Color(0xFF140A03),
                   child: Center(
@@ -416,6 +445,7 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
+                ),
                 ),
               ),
             ),

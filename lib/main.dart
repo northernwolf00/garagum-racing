@@ -8,6 +8,7 @@ import 'i18n/translation_service.dart';
 import 'screens/menu/menu_screen.dart';
 import 'services/ad_service.dart';
 import 'services/app_settings.dart';
+import 'services/sfx.dart';
 import 'services/game_progress_service.dart';
 import 'services/purchase_service.dart';
 
@@ -20,6 +21,9 @@ void main() async {
 
   // Load persisted audio preferences (music / sfx toggles).
   await AppSettings.instance.init();
+
+  // Warm the SFX cache so the first tap/coin/crash sound doesn't hitch.
+  await Sfx.preload();
 
   // Load saved coins/round-progress before the first frame, so every screen
   // (menu coin badge, level unlock state) always reads real persisted data
