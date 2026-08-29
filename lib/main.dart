@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'i18n/locale_service.dart';
 import 'i18n/translation_service.dart';
@@ -48,12 +49,18 @@ class GaragumRacingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final base = ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE8A33D)),
+      useMaterial3: true,
+    );
     return GetMaterialApp(
       title: 'Garagum Racing',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE8A33D)),
-        useMaterial3: true,
+      theme: base.copyWith(
+        // Exo 2 — a geometric, motorsport-flavoured family that covers Latin,
+        // Cyrillic and the Turkmen diacritics used across all three languages.
+        textTheme: GoogleFonts.exo2TextTheme(base.textTheme),
+        primaryTextTheme: GoogleFonts.exo2TextTheme(base.primaryTextTheme),
       ),
       translations: TranslationService(),
       locale: LocaleService.instance.locale,
