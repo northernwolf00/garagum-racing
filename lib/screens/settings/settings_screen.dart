@@ -1,7 +1,6 @@
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../i18n/locale_service.dart';
 import '../../i18n/translation_service.dart';
@@ -188,11 +187,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: () => _comingSoon(context),
                           ),
                           const _TileDivider(),
-                          _NavTile(
+                          _InfoTile(
                             icon: Icons.mail_outline_rounded,
                             label: 'contact_us'.tr,
                             subtitle: kSupportEmail,
-                            onTap: () => _contactSupport(context),
                           ),
                           const _TileDivider(),
                           _InfoTile(
@@ -232,25 +230,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
-  }
-
-  /// Open the device mail client to email support. Falls back to copying the
-  /// address into a snackbar if no mail app can be launched.
-  static Future<void> _contactSupport(BuildContext context) async {
-    final uri = Uri(
-      scheme: 'mailto',
-      path: kSupportEmail,
-      query: 'subject=${Uri.encodeComponent('Garagum Racing')}',
-    );
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(kSupportEmail),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
   }
 }
 
@@ -411,12 +390,10 @@ class _NavTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.subtitle,
   });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -430,30 +407,13 @@ class _NavTile extends StatelessWidget {
             Icon(icon, color: _SettingsScreenState._amber, size: 22),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: _SettingsScreenState._cream,
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(
-                        color: Color(0xFF8A6A3F),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: _SettingsScreenState._cream,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const Icon(Icons.chevron_right_rounded,
@@ -471,12 +431,14 @@ class _InfoTile extends StatelessWidget {
     required this.icon,
     required this.label,
     this.trailing,
+    this.subtitle,
     this.color,
   });
 
   final IconData icon;
   final String label;
   final String? trailing;
+  final String? subtitle;
   final Color? color;
 
   @override
@@ -489,13 +451,30 @@ class _InfoTile extends StatelessWidget {
           Icon(icon, color: color ?? _SettingsScreenState._amber, size: 22),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: c,
-                fontSize: 15.5,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: c,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      color: Color(0xFF8A6A3F),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (trailing != null)

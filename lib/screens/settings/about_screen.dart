@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'settings_screen.dart' show kSupportEmail;
 
@@ -179,61 +178,46 @@ class AboutScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // Contact / support email
-                      InkWell(
-                        onTap: () async {
-                          final uri = Uri(
-                            scheme: 'mailto',
-                            path: kSupportEmail,
-                            query:
-                                'subject=${Uri.encodeComponent('Garagum Racing')}',
-                          );
-                          await launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
-                        },
-                        borderRadius: BorderRadius.circular(18),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1C0E06),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0x33E8A33D)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.mail_outline_rounded,
-                                  color: _amber, size: 22),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'contact_us'.tr,
-                                      style: const TextStyle(
-                                        color: _cream,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                      // Contact / support email (display only)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C0E06),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0x33E8A33D)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.mail_outline_rounded,
+                                color: _amber, size: 22),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'contact_us'.tr,
+                                    style: const TextStyle(
+                                      color: _cream,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      kSupportEmail,
-                                      style: TextStyle(
-                                        color: Color(0xFF8A6A3F),
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    kSupportEmail,
+                                    style: TextStyle(
+                                      color: Color(0xFF8A6A3F),
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                              const Icon(Icons.chevron_right_rounded,
-                                  color: Color(0xFF8A6A3F), size: 22),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 28),
