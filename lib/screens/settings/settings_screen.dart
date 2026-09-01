@@ -1,6 +1,8 @@
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../i18n/locale_service.dart';
 import '../../i18n/translation_service.dart';
@@ -11,6 +13,14 @@ import 'about_screen.dart';
 
 /// Support / feedback email shown in the About section.
 const String kSupportEmail = 'googadevgroup@gmail.com';
+
+/// Google Play listing — used by "Rate us" and "Share".
+const String kPlayStoreUrl =
+    'https://play.google.com/store/apps/details?id=com.googadev.garagum_racing';
+
+/// Privacy policy URL shown in the About section.
+const String kPrivacyPolicyUrl =
+    'https://www.freeprivacypolicy.com/live/b4dae350-e1ac-47c4-8036-7e6783d3c5ca';
 
 /// Full-screen, modern settings page (replaces the old bottom sheet).
 ///
@@ -220,19 +230,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _NavTile(
                             icon: Icons.star_rounded,
                             label: 'rate_us'.tr,
-                            onTap: () => _comingSoon(context),
+                            onTap: () => _openUrl(context, kPlayStoreUrl),
                           ),
                           const _TileDivider(),
                           _NavTile(
                             icon: Icons.share_rounded,
                             label: 'share_app'.tr,
-                            onTap: () => _comingSoon(context),
+                            onTap: _shareApp,
                           ),
                           const _TileDivider(),
                           _NavTile(
                             icon: Icons.privacy_tip_outlined,
                             label: 'privacy_policy'.tr,
-                            onTap: () => _comingSoon(context),
+                            onTap: () => _openUrl(context, kPrivacyPolicyUrl),
                           ),
                           const _TileDivider(),
                           _InfoTile(
@@ -271,13 +281,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  static void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('coming_soon'.tr),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  /// Opens [url] in the browser / relevant app (e.g. the Play Store). Shows a
+  /// snackbar if no app can handle it.
+  static Future<void> _openUrl(BuildContext context, String url) async {
+    var ok = false;
+    try {
+      ok = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('link_open_failed'.tr),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Opens the system share sheet with the app's Play Store link.
+  static Future<void> _shareApp() async {
+    try {
+      await SharePlus.instance.share(
+        ShareParams(text: '${'share_message'.tr}\n$kPlayStoreUrl'),
+      );
+    } catch (_) {
+      // Sharing cancelled or unavailable — nothing to do.
+    }
   }
 }
 

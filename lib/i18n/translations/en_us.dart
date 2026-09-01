@@ -120,6 +120,8 @@ final Map<String, String> enUS = {
           'the way.',
   'rate_us': 'Rate the game',
   'share_app': 'Share the game',
+  'share_message': 'Race across Turkmenistan in Garagum Racing! 🏜️🏎️',
+  'link_open_failed': 'Could not open the link.',
   'privacy_policy': 'Privacy Policy',
   'contact_us': 'Contact us',
   'made_with_love': 'Made with ❤️ in Turkmenistan',

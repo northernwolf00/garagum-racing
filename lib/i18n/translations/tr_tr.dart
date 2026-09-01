@@ -120,6 +120,8 @@ final Map<String, String> trTR = {
           'Ulaglaryňyzy kämilleşdiriň, her tury geçiň we ýolboýy teňňe toplaň.',
   'rate_us': 'Oýny bahalandyryň',
   'share_app': 'Oýny paýlaşyň',
+  'share_message': 'Garagum Racing-de Türkmenistanyň üsti bilen ýaryş! 🏜️🏎️',
+  'link_open_failed': 'Baglanyşyk açylmady.',
   'privacy_policy': 'Gizlinlik syýasaty',
   'contact_us': 'Biz bilen habarlaşyň',
   'made_with_love': 'Türkmenistanda ❤️ bilen ýasaldy',
