@@ -6,6 +6,7 @@ import '../../i18n/locale_service.dart';
 import '../../i18n/translation_service.dart';
 import '../../services/app_settings.dart';
 import '../../services/purchase_service.dart';
+import '../pro/pro_paywall_screen.dart';
 import 'about_screen.dart';
 
 /// Support / feedback email shown in the About section.
@@ -111,30 +112,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _SectionCard(
                         title: 'purchases_section'.tr,
                         children: [
+                          // ── Pro subscription (garagumracing_pro) ──────────
                           ValueListenableBuilder<bool>(
                             valueListenable:
-                                PurchaseService.instance.noAdsNotifier,
-                            builder: (context, noAds, _) {
-                              final adFree =
-                                  noAds || PurchaseService.instance.isVip;
-                              if (adFree) {
-                                return _InfoTile(
-                                  icon: Icons.verified_rounded,
-                                  label: 'ad_free_active'.tr,
-                                  color: const Color(0xFF76FF03),
+                                PurchaseService.instance.proNotifier,
+                            builder: (context, isPro, _) {
+                              if (isPro) {
+                                return Column(
+                                  children: [
+                                    _InfoTile(
+                                      icon: Icons.workspace_premium_rounded,
+                                      label: 'pro_active'.tr,
+                                      color: const Color(0xFFE8A33D),
+                                    ),
+                                    const _TileDivider(),
+                                    _NavTile(
+                                      icon: Icons.manage_accounts_rounded,
+                                      label: 'manage_subscription'.tr,
+                                      onTap: () => PurchaseService.instance
+                                          .presentCustomerCenter(),
+                                    ),
+                                    const _TileDivider(),
+                                  ],
                                 );
                               }
-                              return _NavTile(
-                                icon: Icons.block_rounded,
-                                label: 'remove_ads'.tr,
-                                onTap: () => PurchaseService.instance
-                                    .presentPaywallIfNeeded(
-                                  PurchaseService.entitlementNoAds,
-                                ),
+                              return Column(
+                                children: [
+                                  _NavTile(
+                                    icon: Icons.workspace_premium_rounded,
+                                    label: 'go_pro'.tr,
+                                    onTap: () =>
+                                        ProPaywallScreen.open(context),
+                                  ),
+                                  const _TileDivider(),
+                                ],
                               );
                             },
                           ),
-                          const _TileDivider(),
+                          ValueListenableBuilder<bool>(
+                            valueListenable:
+                                PurchaseService.instance.proNotifier,
+                            builder: (context, isPro, _) {
+                              // Pro already includes ad-free, so don't show a
+                              // separate remove-ads / ad-free row for Pro users.
+                              if (isPro) return const SizedBox.shrink();
+                              return ValueListenableBuilder<bool>(
+                                valueListenable:
+                                    PurchaseService.instance.noAdsNotifier,
+                                builder: (context, noAds, _) {
+                                  final adFree =
+                                      noAds || PurchaseService.instance.isVip;
+                                  final tile = adFree
+                                      ? _InfoTile(
+                                          icon: Icons.verified_rounded,
+                                          label: 'ad_free_active'.tr,
+                                          color: const Color(0xFF76FF03),
+                                        )
+                                      : _NavTile(
+                                          icon: Icons.block_rounded,
+                                          label: 'remove_ads'.tr,
+                                          onTap: () => PurchaseService.instance
+                                              .presentPaywallIfNeeded(
+                                            PurchaseService.entitlementNoAds,
+                                          ),
+                                        );
+                                  return Column(
+                                    children: [tile, const _TileDivider()],
+                                  );
+                                },
+                              );
+                            },
+                          ),
                           _NavTile(
                             icon: Icons.restore_rounded,
                             label: 'restore_purchases'.tr,

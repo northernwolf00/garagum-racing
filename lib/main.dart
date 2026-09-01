@@ -1,19 +1,50 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'firebase_options.dart';
 import 'i18n/locale_service.dart';
 import 'i18n/translation_service.dart';
 import 'screens/menu/menu_screen.dart';
 import 'services/ad_service.dart';
+import 'services/analytics_service.dart';
 import 'services/app_settings.dart';
+import 'services/push_service.dart';
 import 'services/sfx.dart';
 import 'services/game_progress_service.dart';
 import 'services/purchase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Bring up Firebase before any other Firebase-backed service. If it fails
+  // (e.g. no network on first launch) the app still runs — the individual
+  // services below all degrade to safe no-ops.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Route Flutter framework errors and uncaught async errors to Crashlytics.
+    // Collection is off in debug so developer crashes don't pollute the console.
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+      !kDebugMode,
+    );
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    await AnalyticsService.instance.init();
+    await PushService.instance.init();
+  } catch (e) {
+    debugPrint('[firebase] initialisation failed: $e');
+  }
 
   // Load the saved UI language before the first frame so the menu renders in
   // the player's chosen language from the very first paint.
@@ -73,6 +104,8 @@ class GaragumRacingApp extends StatelessWidget {
       translations: TranslationService(),
       locale: LocaleService.instance.locale,
       fallbackLocale: TranslationService.fallbackLocale,
+      // Logs a `screen_view` event automatically on every route change.
+      navigatorObservers: [AnalyticsService.instance.observer],
       home: const MenuScreen(),
     );
   }

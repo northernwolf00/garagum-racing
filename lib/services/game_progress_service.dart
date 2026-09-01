@@ -5,6 +5,7 @@ import '../models/gate_config.dart';
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
 import '../models/upgrade_config.dart';
+import 'analytics_service.dart';
 
 /// Handles persistent local game progress:
 /// - Total coins collected across all runs (spendable)
@@ -97,11 +98,13 @@ class GameProgressService {
       getOwnedVehicles().contains(vehicleId);
 
   Future<void> ownVehicle(String vehicleId) async {
+    final wasOwned = isVehicleOwned(vehicleId);
     final owned = getOwnedVehicles()..add(vehicleId);
     // Persist only the non-default ids to keep the stored list minimal.
     final toStore =
         owned.where((v) => !_defaultOwnedVehicles.contains(v)).toList();
     await _prefs?.setStringList(_keyOwnedVehicles, toStore);
+    if (!wasOwned) AnalyticsService.instance.logVehicleUnlocked(vehicleId);
   }
 
   // ── Vehicle upgrades ──────────────────────────────────────────────────────
@@ -156,6 +159,7 @@ class GameProgressService {
     await _prefs?.setString(_keyRewardAdDate, today);
     await _prefs?.setInt(_keyRewardAdCount, used + 1);
     await addCoins(rewardAdCoins);
+    AnalyticsService.instance.logRewardedEarned(rewardAdCoins);
     return rewardAdCoins;
   }
 
@@ -358,6 +362,7 @@ class GameProgressService {
     if (!unlocked.contains(round)) {
       unlocked.add(round);
       await _prefs?.setString(_unlockedKey(theme), _encodeList(unlocked));
+      AnalyticsService.instance.logLevelUnlocked('${theme.name}_$round');
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/analytics_service.dart';
 import 'translation_service.dart';
 
 /// Loads and persists the player's chosen language across launches.
@@ -34,6 +35,7 @@ class LocaleService {
     _locale = TranslationService.localeFromLanguageCode(code);
     await _prefs?.setString(_prefsKey, _locale.languageCode);
     Get.updateLocale(_locale);
+    AnalyticsService.instance.logLanguageChanged(_locale.languageCode);
   }
 
   /// The currently active language code (`en`, `ru`, `tr`).
