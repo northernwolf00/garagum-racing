@@ -1,15 +1,26 @@
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../i18n/locale_service.dart';
 import '../../i18n/translation_service.dart';
 import '../../services/app_settings.dart';
 import '../../services/purchase_service.dart';
+import '../pro/pro_paywall_screen.dart';
 import 'about_screen.dart';
 
 /// Support / feedback email shown in the About section.
 const String kSupportEmail = 'googadevgroup@gmail.com';
+
+/// Google Play listing — used by "Rate us" and "Share".
+const String kPlayStoreUrl =
+    'https://play.google.com/store/apps/details?id=com.googadev.garagum_racing';
+
+/// Privacy policy URL shown in the About section.
+const String kPrivacyPolicyUrl =
+    'https://www.freeprivacypolicy.com/live/b4dae350-e1ac-47c4-8036-7e6783d3c5ca';
 
 /// Full-screen, modern settings page (replaces the old bottom sheet).
 ///
@@ -111,30 +122,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _SectionCard(
                         title: 'purchases_section'.tr,
                         children: [
+                          // ── Pro subscription (garagumracing_pro) ──────────
                           ValueListenableBuilder<bool>(
                             valueListenable:
-                                PurchaseService.instance.noAdsNotifier,
-                            builder: (context, noAds, _) {
-                              final adFree =
-                                  noAds || PurchaseService.instance.isVip;
-                              if (adFree) {
-                                return _InfoTile(
-                                  icon: Icons.verified_rounded,
-                                  label: 'ad_free_active'.tr,
-                                  color: const Color(0xFF76FF03),
+                                PurchaseService.instance.proNotifier,
+                            builder: (context, isPro, _) {
+                              if (isPro) {
+                                return Column(
+                                  children: [
+                                    _InfoTile(
+                                      icon: Icons.workspace_premium_rounded,
+                                      label: 'pro_active'.tr,
+                                      color: const Color(0xFFE8A33D),
+                                    ),
+                                    const _TileDivider(),
+                                    _NavTile(
+                                      icon: Icons.manage_accounts_rounded,
+                                      label: 'manage_subscription'.tr,
+                                      onTap: () => PurchaseService.instance
+                                          .presentCustomerCenter(),
+                                    ),
+                                    const _TileDivider(),
+                                  ],
                                 );
                               }
-                              return _NavTile(
-                                icon: Icons.block_rounded,
-                                label: 'remove_ads'.tr,
-                                onTap: () => PurchaseService.instance
-                                    .presentPaywallIfNeeded(
-                                  PurchaseService.entitlementNoAds,
-                                ),
+                              return Column(
+                                children: [
+                                  _NavTile(
+                                    icon: Icons.workspace_premium_rounded,
+                                    label: 'go_pro'.tr,
+                                    onTap: () =>
+                                        ProPaywallScreen.open(context),
+                                  ),
+                                  const _TileDivider(),
+                                ],
                               );
                             },
                           ),
-                          const _TileDivider(),
+                          ValueListenableBuilder<bool>(
+                            valueListenable:
+                                PurchaseService.instance.proNotifier,
+                            builder: (context, isPro, _) {
+                              // Pro already includes ad-free, so don't show a
+                              // separate remove-ads / ad-free row for Pro users.
+                              if (isPro) return const SizedBox.shrink();
+                              return ValueListenableBuilder<bool>(
+                                valueListenable:
+                                    PurchaseService.instance.noAdsNotifier,
+                                builder: (context, noAds, _) {
+                                  final adFree =
+                                      noAds || PurchaseService.instance.isVip;
+                                  final tile = adFree
+                                      ? _InfoTile(
+                                          icon: Icons.verified_rounded,
+                                          label: 'ad_free_active'.tr,
+                                          color: const Color(0xFF76FF03),
+                                        )
+                                      : _NavTile(
+                                          icon: Icons.block_rounded,
+                                          label: 'remove_ads'.tr,
+                                          onTap: () => PurchaseService.instance
+                                              .presentPaywallIfNeeded(
+                                            PurchaseService.entitlementNoAds,
+                                          ),
+                                        );
+                                  return Column(
+                                    children: [tile, const _TileDivider()],
+                                  );
+                                },
+                              );
+                            },
+                          ),
                           _NavTile(
                             icon: Icons.restore_rounded,
                             label: 'restore_purchases'.tr,
@@ -172,19 +230,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _NavTile(
                             icon: Icons.star_rounded,
                             label: 'rate_us'.tr,
-                            onTap: () => _comingSoon(context),
+                            onTap: () => _openUrl(context, kPlayStoreUrl),
                           ),
                           const _TileDivider(),
                           _NavTile(
                             icon: Icons.share_rounded,
                             label: 'share_app'.tr,
-                            onTap: () => _comingSoon(context),
+                            onTap: _shareApp,
                           ),
                           const _TileDivider(),
                           _NavTile(
                             icon: Icons.privacy_tip_outlined,
                             label: 'privacy_policy'.tr,
-                            onTap: () => _comingSoon(context),
+                            onTap: () => _openUrl(context, kPrivacyPolicyUrl),
                           ),
                           const _TileDivider(),
                           _InfoTile(
@@ -223,13 +281,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  static void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('coming_soon'.tr),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  /// Opens [url] in the browser / relevant app (e.g. the Play Store). Shows a
+  /// snackbar if no app can handle it.
+  static Future<void> _openUrl(BuildContext context, String url) async {
+    var ok = false;
+    try {
+      ok = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('link_open_failed'.tr),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Opens the system share sheet with the app's Play Store link.
+  static Future<void> _shareApp() async {
+    try {
+      await SharePlus.instance.share(
+        ShareParams(text: '${'share_message'.tr}\n$kPlayStoreUrl'),
+      );
+    } catch (_) {
+      // Sharing cancelled or unavailable — nothing to do.
+    }
   }
 }
 

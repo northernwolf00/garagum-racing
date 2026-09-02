@@ -3,6 +3,9 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -22,6 +25,14 @@ android {
     namespace = "com.googadev.garagum_racing"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
+    // url_launcher pulls androidx.browser (Custom Tabs). Pin it to 1.8.0 —
+    // newer 1.9.0 has caused resolution failures in restricted-network builds.
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.browser:browser:1.8.0")
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

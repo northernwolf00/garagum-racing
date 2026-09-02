@@ -249,7 +249,20 @@ class _MenuScreenState extends State<MenuScreen>
 
   Future<void> _onSettings() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      PageRouteBuilder(
+        pageBuilder: (_, animation, __) => const SettingsScreen(),
+        transitionsBuilder: (_, animation, __, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+                parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
     );
     // Language may have changed — rebuild so localized menu text refreshes.
     if (mounted) setState(() {});

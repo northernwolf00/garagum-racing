@@ -31,6 +31,12 @@ dependencies:
   purchases_flutter: ^10.9.1
   purchases_ui_flutter: ^10.9.1
   google_mobile_ads: ^9.1.0
+  firebase_core: ^4.9.0
+  firebase_messaging: ^16.2.2
+  firebase_crashlytics: ^5.2.2
+  firebase_analytics: ^12.4.1
+  url_launcher: ^6.3.2
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

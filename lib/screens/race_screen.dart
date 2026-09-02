@@ -11,6 +11,7 @@ import '../models/gate_config.dart';
 import '../models/map_theme.dart';
 import '../models/round_config.dart';
 import '../services/ad_service.dart';
+import '../services/analytics_service.dart';
 import '../services/game_progress_service.dart';
 import '../services/sfx.dart';
 import 'levels/ashgabat_levels_screen.dart';
@@ -78,6 +79,9 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
 
   RoundConfig get _round => widget.roundConfig;
 
+  /// Stable analytics id for this round, e.g. `garagum_3`.
+  String get _levelId => '${_round.theme.name}_${_round.roundIndex}';
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +102,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
       _brakePressed = false;
       _saveCoins();
       AdService.instance.recordRunEnded();
+      AnalyticsService.instance.logRaceEnd(
+        _levelId,
+        'out_of_fuel',
+        coins: _game.coinNotifier.value,
+      );
       // Use addPostFrameCallback so setState fires after the current build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _outOfFuel = true);
@@ -114,6 +123,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _shakeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 420),
+    );
+
+    AnalyticsService.instance.logRaceStart(
+      _levelId,
+      GameProgressService.instance.getSelectedVehicle(),
     );
   }
 
@@ -144,6 +158,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     _brakePressed = false;
     _saveCoins();
     AdService.instance.recordRunEnded();
+    AnalyticsService.instance.logRaceEnd(
+      _levelId,
+      'crash',
+      coins: _game.coinNotifier.value,
+    );
     // Crash feedback: sound + heavy haptic + a quick camera shake.
     Sfx.crash();
     _shakeCtrl.forward(from: 0);
@@ -163,6 +182,11 @@ class _RaceScreenState extends State<RaceScreen> with TickerProviderStateMixin {
     // the current game render frame.
     await _saveProgress();
     AdService.instance.recordRunEnded();
+    AnalyticsService.instance.logRaceEnd(
+      _levelId,
+      'finish',
+      coins: _game.coinNotifier.value,
+    );
     Sfx.levelComplete();
     if (mounted) setState(() => _finished = true);
   }

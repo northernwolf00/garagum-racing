@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "758201503329",
+    "project_id": "oguzgroupchat",
+    "storage_bucket": "oguzgroupchat.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:758201503329:android:16aa804829ac0f5f126420",
+        "android_client_info": {
+          "package_name": "com.googadev.garagum_racing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxevO4UOPJniNLl9OK7MyXwpKlqpAJWZQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
