@@ -65,15 +65,19 @@ class PurchaseService {
   /// nothing is configured, every entitlement reads `false`, and the app never
   /// crashes.
   static const String _testStoreApiKey = 'test_LVJwiszEYglNEtIBREtvFCmSmab';
-  static const String _androidApiKey = 'goog_REPLACE_ME';
+  static const String _androidApiKey = 'goog_BvUtdsLEHCSQlQqrwehvUvqTEQl';
   static const String _iosApiKey = 'appl_REPLACE_ME';
 
-  /// The key actually handed to [Purchases.configure]. Prefers the Test Store
-  /// key (works on both platforms), then falls back to the platform-specific
-  /// production key.
+  /// The key actually handed to [Purchases.configure]. Prefers the real
+  /// platform-specific production key (`goog_…` / `appl_…`) so purchases run
+  /// against the live store, and only falls back to the cross-platform Test
+  /// Store key (`test_…`) when the platform key is still a placeholder. This
+  /// keeps iOS working via the Test Store while Android uses its real key.
   static String get _apiKey {
+    final platformKey = Platform.isIOS ? _iosApiKey : _androidApiKey;
+    if (!platformKey.contains('REPLACE_ME')) return platformKey;
     if (_testStoreApiKey.startsWith('test_')) return _testStoreApiKey;
-    return Platform.isIOS ? _iosApiKey : _androidApiKey;
+    return platformKey;
   }
 
   static PurchaseService? _instance;
