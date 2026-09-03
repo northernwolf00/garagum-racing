@@ -1,0 +1,103 @@
+name: Production Release Build
+
+# Runs when code lands on the `production` branch (i.e. a PR into `production`
+# is merged) or when triggered manually. Builds a signed AAB + APK, publishes a
+# GitHub Release with the APK, and uploads the AAB to the Play Store.
+on:
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+
+jobs:
+  build_android:
+    name: Build & Deploy Android Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free up disk space
+        run: |
+          echo "Before:"; df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /usr/share/swift /usr/local/share/powershell \
+            /usr/local/share/chromium /usr/local/lib/node_modules \
+            /opt/hostedtoolcache/CodeQL || true
+          sudo docker image prune --all --force || true
+          echo "After:"; df -h /
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.7"
+          channel: "stable"
+
+      # The release AAB strips native debug symbols with the NDK version Flutter
+      # pins (flutter.ndkVersion). Installing the exact match avoids the runner's
+      # NDK mismatch failing "bundleRelease" with "failed to strip debug symbols".
+      - name: Install matching Android NDK
+        run: |
+          echo "y" | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "ndk;28.2.13676358"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # build.gradle.kts reads android/key.properties (rootProject.file) and
+      # resolves storeFile relative to the :app module, so we decode the upload
+      # keystore into android/app/ and point at it with an absolute path.
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Create key.properties
+        run: |
+          echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=${{ github.workspace }}/android/app/upload-keystore.jks" >> android/key.properties
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Build release AAB
+        run: flutter build appbundle --release
+
+      - name: Extract version
+        run: |
+          version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
+          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "RELEASE_TAG=production-v${version}-${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          artifacts: build/app/outputs/flutter-apk/app-release.apk
+          tag: ${{ env.RELEASE_TAG }}
+          name: Production Release ${{ env.VERSION }}
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          packageName: com.googadev.garagum_racing
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: production
+          status: completed
