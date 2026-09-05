@@ -34,6 +34,11 @@ jobs:
           distribution: "zulu"
           java-version: "17"
 
+      - name: Increase file watcher limits
+        run: |
+          echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+          sudo sysctl -p
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.38.7"
@@ -74,6 +79,11 @@ jobs:
 
       - name: Build release APK
         run: flutter build apk --release
+
+      # Clean between builds so the AAB build starts from a fresh state and the
+      # two heavy Gradle builds don't share/contend memory on the CI runner.
+      - name: Clean before AAB build
+        run: flutter clean
 
       - name: Build release AAB
         run: flutter build appbundle --release
