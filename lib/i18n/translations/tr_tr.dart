@@ -123,6 +123,7 @@ final Map<String, String> trTR = {
   'share_message': 'Garagum Racing-de Türkmenistanyň üsti bilen ýaryş! 🏜️🏎️',
   'link_open_failed': 'Baglanyşyk açylmady.',
   'privacy_policy': 'Gizlinlik syýasaty',
+  'ad_privacy': 'Mahabat gizlinligi',
   'contact_us': 'Biz bilen habarlaşyň',
   'made_with_love': 'Türkmenistanda ❤️ bilen ýasaldy',
   'coming_soon': 'Ýakynda',

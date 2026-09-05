@@ -11,6 +11,7 @@ import 'i18n/locale_service.dart';
 import 'i18n/translation_service.dart';
 import 'screens/menu/menu_screen.dart';
 import 'services/ad_service.dart';
+import 'services/consent_manager.dart';
 import 'services/analytics_service.dart';
 import 'services/app_settings.dart';
 import 'services/push_service.dart';
@@ -65,7 +66,13 @@ void main() async {
   // state, then initialise ads. Both degrade to safe no-ops if their
   // credentials aren't configured, so neither can block startup.
   await PurchaseService.instance.init();
-  await AdService.instance.init();
+
+  // Gather UMP consent before initialising ads. Google policy requires that
+  // MobileAds.initialize() is called only after the user's consent is known.
+  // In non-EEA regions the call completes instantly (no form shown).
+  await ConsentManager.instance.gatherConsent();
+  final adsAllowed = await ConsentManager.instance.canRequestAds();
+  await AdService.instance.init(adsAllowed: adsAllowed);
 
   // Grant the VIP daily coin bonus once per day (no-op for non-VIP players).
   await GameProgressService.instance

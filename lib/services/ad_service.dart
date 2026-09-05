@@ -88,10 +88,18 @@ class AdService {
   /// instead of being covered by it.
   final ValueNotifier<bool> bannerVisible = ValueNotifier(false);
 
-  Future<void> init() async {
+  Future<void> init({bool adsAllowed = true}) async {
     if (_initialized) return;
     _initialized = true;
     _prefs = await SharedPreferences.getInstance();
+
+    // If UMP consent was not granted (or is not yet known), do not initialise
+    // the ads SDK — Google policy forbids ad requests before consent is settled.
+    if (!adsAllowed) {
+      debugPrint('[ads] consent not granted — skipping MobileAds init');
+      return;
+    }
+
     try {
       await MobileAds.instance.updateRequestConfiguration(
         RequestConfiguration(
@@ -107,6 +115,7 @@ class AdService {
     _loadInterstitial();
     _loadRewarded();
   }
+
 
   // ── Interstitial ───────────────────────────────────────────────────────────
 

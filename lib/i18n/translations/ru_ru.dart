@@ -122,6 +122,7 @@ final Map<String, String> ruRU = {
   'share_message': 'Гонки по Туркменистану в Garagum Racing! 🏜️🏎️',
   'link_open_failed': 'Не удалось открыть ссылку.',
   'privacy_policy': 'Политика конфиденциальности',
+  'ad_privacy': 'Конфиденциальность рекламы',
   'contact_us': 'Связаться с нами',
   'made_with_love': 'Сделано с ❤️ в Туркменистане',
   'coming_soon': 'Скоро',

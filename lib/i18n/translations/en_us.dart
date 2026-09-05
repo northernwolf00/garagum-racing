@@ -123,6 +123,7 @@ final Map<String, String> enUS = {
   'share_message': 'Race across Turkmenistan in Garagum Racing! 🏜️🏎️',
   'link_open_failed': 'Could not open the link.',
   'privacy_policy': 'Privacy Policy',
+  'ad_privacy': 'Ad Privacy',
   'contact_us': 'Contact us',
   'made_with_love': 'Made with ❤️ in Turkmenistan',
   'coming_soon': 'Coming soon',

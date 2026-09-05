@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../i18n/locale_service.dart';
 import '../../i18n/translation_service.dart';
 import '../../services/app_settings.dart';
+import '../../services/consent_manager.dart';
 import '../../services/purchase_service.dart';
 import '../pro/pro_paywall_screen.dart';
 import 'about_screen.dart';
@@ -38,6 +39,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _amber = Color(0xFFE8A33D);
   static const _cream = Color(0xFFFFD98C);
 
+  // Whether to show the "Ad Privacy" / UMP privacy-options button.
+  // Only visible in EEA/UK regions; hidden in Turkmenistan and elsewhere.
+  bool _showPrivacyButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrivacyStatus();
+  }
+
+  Future<void> _loadPrivacyStatus() async {
+    final required = await ConsentManager.instance.isPrivacyOptionsRequired();
+    if (mounted) setState(() => _showPrivacyButton = required);
+  }
+
   void _applyMusic(bool on) {
     AppSettings.instance.setMusic(on);
     if (on) {
@@ -46,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       FlameAudio.bgm.stop();
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -244,6 +261,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             label: 'privacy_policy'.tr,
                             onTap: () => _openUrl(context, kPrivacyPolicyUrl),
                           ),
+                          // "Ad Privacy" / UMP consent management button.
+                          // Shown only when Google requires it (EEA/UK regions).
+                          if (_showPrivacyButton) ...[
+                            const _TileDivider(),
+                            _NavTile(
+                              icon: Icons.manage_accounts_outlined,
+                              label: 'ad_privacy'.tr,
+                              onTap: () async {
+                                await ConsentManager.instance
+                                    .showPrivacyOptionsForm();
+                                // Refresh visibility after user changes consent.
+                                _loadPrivacyStatus();
+                              },
+                            ),
+                          ],
                           const _TileDivider(),
                           _InfoTile(
                             icon: Icons.mail_outline_rounded,
