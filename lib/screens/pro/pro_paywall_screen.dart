@@ -147,7 +147,7 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
               child: _buildBody(),
             ),
           ],
@@ -175,10 +175,10 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Container(
-          width: 68,
-          height: 68,
+          width: 50,
+          height: 50,
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -186,28 +186,28 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
             ),
           ),
           child: const Icon(Icons.workspace_premium_rounded,
-              color: Colors.white, size: 38),
+              color: Colors.white, size: 28),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
         Text(
           'pro_title'.tr,
           style: const TextStyle(
             color: Color(0xFFFFD98C),
-            fontSize: 26,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1,
+            letterSpacing: 0.8,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           'pro_subtitle'.tr,
           style: const TextStyle(
             color: Color(0xFF8A6A3F),
-            fontSize: 13.5,
+            fontSize: 12.5,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 10),
         ..._benefits(),
       ],
     );
@@ -223,17 +223,19 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
     return [
       for (final (icon, key) in items)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
+          padding: const EdgeInsets.symmetric(vertical: 2.5),
           child: Row(
             children: [
-              Icon(icon, color: const Color(0xFF76FF03), size: 20),
-              const SizedBox(width: 12),
-              Text(
-                key.tr,
-                style: const TextStyle(
-                  color: Color(0xFFEAD9C3),
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
+              Icon(icon, color: const Color(0xFF76FF03), size: 16),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  key.tr,
+                  style: const TextStyle(
+                    color: Color(0xFFEAD9C3),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -244,7 +246,10 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
 
   // ── Plan selection ──────────────────────────────────────────────────────────
   Widget _buildPlans() {
-    // The single best-value badge goes on lifetime, else annual.
+    // The single best-value badge goes on lifetime, else annual, else starter pack.
+    final hasSubscription = _packages.any((p) =>
+        p.packageType == PackageType.lifetime ||
+        p.packageType == PackageType.annual);
     final badgeType = _packages.any((p) => p.packageType == PackageType.lifetime)
         ? PackageType.lifetime
         : PackageType.annual;
@@ -253,21 +258,27 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
       children: [
         Expanded(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
                 _buildHeader(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 for (final pkg in _packages) ...[
                   _PlanCard(
                     label: _planLabel(pkg),
                     price: pkg.storeProduct.priceString,
                     subPrice: _subPrice(pkg),
                     trial: _trialText(pkg),
-                    bestValue: pkg.packageType == badgeType,
+                    icon: _planIcon(pkg),
+                    bestValue: hasSubscription
+                        ? pkg.packageType == badgeType
+                        : pkg.storeProduct.identifier
+                            .toLowerCase()
+                            .contains('starter_pack'),
                     selected: identical(pkg, _selected),
                     onTap: _busy ? null : () => setState(() => _selected = pkg),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6.5),
                 ],
               ],
             ),
@@ -278,14 +289,20 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
           busy: _busy,
           onTap: _selected == null ? null : _buySelected,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         TextButton(
           onPressed: _busy ? null : _restore,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
           child: Text(
             'restore_purchases'.tr,
             style: const TextStyle(
               color: Color(0xFF8A6A3F),
               fontWeight: FontWeight.w600,
+              fontSize: 12.5,
             ),
           ),
         ),
@@ -294,14 +311,39 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
   }
 
   String _planLabel(Package pkg) {
-    return switch (pkg.packageType) {
-      PackageType.lifetime => 'plan_lifetime'.tr,
-      PackageType.annual => 'plan_yearly'.tr,
-      PackageType.monthly => 'plan_monthly'.tr,
-      PackageType.weekly => 'plan_weekly'.tr,
-      // Any non-standard duration: fall back to the store's own title.
-      _ => pkg.storeProduct.title,
-    };
+    switch (pkg.packageType) {
+      case PackageType.lifetime:
+        return 'plan_lifetime'.tr;
+      case PackageType.annual:
+        return 'plan_yearly'.tr;
+      case PackageType.monthly:
+        return 'plan_monthly'.tr;
+      case PackageType.weekly:
+        return 'plan_weekly'.tr;
+      default:
+        break;
+    }
+
+    final id = pkg.storeProduct.identifier.toLowerCase();
+    if (id.contains('remove_ads')) return 'remove_ads'.tr;
+    if (id.contains('unlock_all_maps')) return 'pro_benefit_all_maps'.tr;
+    if (id.contains('starter_pack')) return 'Starter Pack';
+    if (id.contains('coins_10000') || id == 'coins_10000') return '10,000 Coins';
+    if (id.contains('coins_50000') || id == 'coins_50000') return '50,000 Coins';
+    if (id.contains('coins_200000') || id == 'coins_200000') return '200,000 Coins';
+
+    final raw = pkg.storeProduct.title;
+    return raw.replaceAll(RegExp(r'\s*\([^)]*\)$'), '').trim();
+  }
+
+  IconData? _planIcon(Package pkg) {
+    final id = pkg.storeProduct.identifier.toLowerCase();
+    if (id.contains('coins_200000')) return Icons.diamond_rounded;
+    if (id.contains('coins')) return Icons.monetization_on_rounded;
+    if (id.contains('starter')) return Icons.card_giftcard_rounded;
+    if (id.contains('map')) return Icons.map_rounded;
+    if (id.contains('ad')) return Icons.block_rounded;
+    return null;
   }
 
   /// A small "≈ price / month" line for the annual plan, when the store gives
@@ -402,6 +444,7 @@ class _PlanCard extends StatelessWidget {
     required this.bestValue,
     required this.selected,
     required this.onTap,
+    this.icon,
   });
 
   final String label;
@@ -411,6 +454,7 @@ class _PlanCard extends StatelessWidget {
   final bool bestValue;
   final bool selected;
   final VoidCallback? onTap;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -418,46 +462,63 @@ class _PlanCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9.5),
         decoration: BoxDecoration(
           color: selected ? const Color(0x33E8A33D) : const Color(0x14E8A33D),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? const Color(0xFFE8A33D) : const Color(0x33E8A33D),
-            width: selected ? 2 : 1,
+            width: selected ? 1.8 : 1,
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
               selected
                   ? Icons.radio_button_checked_rounded
                   : Icons.radio_button_unchecked_rounded,
               color: selected ? const Color(0xFFE8A33D) : const Color(0xFF8A6A3F),
-              size: 22,
+              size: 19,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 9),
+            if (icon != null) ...[
+              Icon(
+                icon,
+                color: selected ? const Color(0xFFFFD98C) : const Color(0xFF9E7E50),
+                size: 17,
+              ),
+              const SizedBox(width: 8),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          color: Color(0xFFFFD98C),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: selected
+                                ? const Color(0xFFFFD98C)
+                                : const Color(0xFFE8D7C2),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       if (bestValue) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                              horizontal: 6, vertical: 1.5),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(4),
                             gradient: const LinearGradient(
                               colors: [Color(0xFFFF8C1A), Color(0xFFE85A00)],
                             ),
@@ -466,9 +527,9 @@ class _PlanCard extends StatelessWidget {
                             'best_value'.tr,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 9.5,
+                              fontSize: 8.5,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
+                              letterSpacing: 0.4,
                             ),
                           ),
                         ),
@@ -481,23 +542,25 @@ class _PlanCard extends StatelessWidget {
                       trial!,
                       style: const TextStyle(
                         color: Color(0xFF76FF03),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   price,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 if (subPrice != null)
@@ -505,7 +568,7 @@ class _PlanCard extends StatelessWidget {
                     subPrice!,
                     style: const TextStyle(
                       color: Color(0xFF8A6A3F),
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -531,9 +594,9 @@ class _ContinueButton extends StatelessWidget {
       onTap: enabled ? onTap : null,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           gradient: enabled
               ? const LinearGradient(
                   colors: [Color(0xFFFFC15A), Color(0xFFE8791A)],
@@ -544,16 +607,16 @@ class _ContinueButton extends StatelessWidget {
         child: Center(
           child: busy
               ? const SizedBox(
-                  width: 22,
-                  height: 22,
+                  width: 20,
+                  height: 20,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
+                      strokeWidth: 2.2, color: Colors.white),
                 )
               : Text(
                   'continue_btn'.tr,
                   style: TextStyle(
                     color: enabled ? Colors.white : const Color(0xFF8A6A3F),
-                    fontSize: 16.5,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.5,
                   ),
@@ -563,3 +626,4 @@ class _ContinueButton extends StatelessWidget {
     );
   }
 }
+
