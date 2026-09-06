@@ -131,6 +131,14 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
     );
   }
 
+  void _closeScreen() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(_purchases.isPro);
+    } else {
+      Get.back(result: _purchases.isPro);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -138,17 +146,23 @@ class _ProPaywallScreenState extends State<ProPaywallScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            Positioned(
-              top: 4,
-              right: 4,
-              child: IconButton(
-                icon: const Icon(Icons.close_rounded, color: Color(0xFF8A6A3F)),
-                onPressed: () => Navigator.of(context).pop(_purchases.isPro),
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
               child: _buildBody(),
+            ),
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Material(
+                color: Colors.black38,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Color(0xFFEAD9C3)),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: _closeScreen,
+                ),
+              ),
             ),
           ],
         ),
