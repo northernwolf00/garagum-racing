@@ -4,9 +4,9 @@
 
 # 🏜️ Garagum Racing
 
-**Türkmenistanyň çägeliklerinde hill-climb ýaryş oýny**
+**A 2D physics-based hill-climb racing game set in the sands of Turkmenistan**
 
-Gum gerişlerinden aşyp, teňňe ýygnap, ýangyjy tygşytlap — 4 dürli kartada 55 turdan geç!
+Conquer sand dunes, collect coins, manage your fuel — race through 55 stages across 4 unique maps!
 
 <br/>
 
@@ -19,208 +19,201 @@ Gum gerişlerinden aşyp, teňňe ýygnap, ýangyjy tygşytlap — 4 dürli kart
 
 ---
 
-## 📖 Mazmun
+## 📖 Table of Contents
 
-- [Oýun barada](#-oýun-barada)
-- [Aýratynlyklar](#-aýratynlyklar)
-- [Kartalar](#️-kartalar)
-- [Ulaglar](#-ulaglar)
-- [Oýun mehanikasy](#-oýun-mehanikasy)
-- [Monetizasiýa](#-monetizasiýa)
-- [Tehnologiýalar](#-tehnologiýalar)
-- [Proýektiň gurluşy](#-proýektiň-gurluşy)
-- [Işläp başlamak](#-işläp-başlamak)
-- [Reliz üçin sazlama](#-reliz-üçin-sazlama)
-
----
-
-## 🎮 Oýun barada
-
-**Garagum Racing** — Türkmenistanyň tebigatyndan ylham alnan 2D fizika-esasly hill-climb
-ýaryş oýny. Oýunçy ulagyny gum gerişlerinden, gaýalardan we gaz kraterlerinden geçirip,
-ýolda teňňe ýygnamaly hem ýangyjyny gutartman finişe ýetmeli.
-
-Oýun **Flame** oýun-hereketlendirijisi we **Forge2D** fizika ulgamy bilen guruldy;
-sesler üç gatlakly hakyky motor modeli bilen çalynýar.
+- [About the Game](#-about-the-game)
+- [Features](#-features)
+- [Maps](#️-maps)
+- [Vehicles](#-vehicles)
+- [Game Mechanics](#-game-mechanics)
+- [Monetization](#-monetization)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [Release Configuration](#-release-configuration)
 
 ---
 
-## ✨ Aýratynlyklar
+## 🎮 About the Game
+
+**Garagum Racing** is a 2D physics-based hill-climb racing game inspired by the landscapes of Turkmenistan. Players navigate through sweeping desert dunes, jagged cliffs, and blazing gas craters, collecting coins along the way while managing fuel to reach the finish line.
+
+The game is powered by the **Flame** engine and **Forge2D** physics simulation, featuring an authentic 3-layer dynamic engine audio model.
+
+---
+
+## ✨ Features
 
 | | |
 |---|---|
-| 🏜️ **4 tematiki karta** | Garagum, Aşgabat, Ýaňňykala, Derweze — hersi öz görnüşi, päsgelçilikleri we sazy bilen |
-| 🚙 **4 dürli ulag** | Buggy, UAZ, Pikap, Ak ulag — hersiniň motory, asmasy, tekerleri, ýangyç tanky başga |
-| 🪙 **Teňňe ulgamy** | Ýolda teňňe ýygna, täze turlary aç, ulaglary satyn al |
-| ⛽ **Ýangyç mehanikasy** | Ýangyjyňy tygşytla, ýoldaky bidonlary al — bak gutarsa oýun tamamlanýar |
-| 🏁 **55 tur** | Kartalara bölünen, kynçylygy ýuwaş-ýuwaşdan artýan turlar |
-| 🎵 **Dinamiki ses** | 3 gatlakly motor sesi (idle / mid / rev) tizlige görä garyşýar |
-| 💰 **Monetizasiýa** | AdMob reklama + RevenueCat satyn alyşlar (aşakda serediň) |
-| 💾 **Ýerli ýatda saklama** | Teňňe we üstünlik `SharedPreferences`-de saklanýar |
+| 🏜️ **4 Thematic Maps** | Garagum, Ashgabat, Yangykala, Darvaza — each with unique visuals, obstacles, and soundtracks |
+| 🚙 **4 Distinct Vehicles** | Buggy, UAZ, Pickup, White Car — each with unique engine power, suspension, tires, and fuel capacity |
+| 🪙 **Coin Economy** | Collect coins on the road, unlock new stages, and purchase vehicles |
+| ⛽ **Fuel Mechanics** | Conserve fuel and pick up gas cans along the track — run out of fuel and the run is over |
+| 🏁 **55 Stages** | Progressively challenging stages distributed across all maps |
+| 🎵 **Dynamic Audio** | 3-layer engine sound system (idle / mid / rev) blended dynamically by speed |
+| 💰 **Monetization** | AdMob advertisements + RevenueCat in-app purchases & subscriptions |
+| 💾 **Local Persistence** | Coins and stage progress saved locally via `SharedPreferences` |
 
 ---
 
-## 🗺️ Kartalar
+## 🗺️ Maps
 
-| Karta | Beýany | Turlar |
+| Map | Description | Stages |
 |---|---|:---:|
-| 🏜️ **Garagum çöli** | Giň çägelikler hem gum gerişleri, kanal köprüleri | 10 |
-| 🏛️ **Aşgabat** | Ak mermer köçeler hem belent binalar | 15 |
-| 🪨 **Ýaňňykala** | Dik gaýalar hem kanyon geçelgeleri | 15 |
-| 🔥 **Derweze (Gaz krateri)** | Gije, alaw hem gapanak päsgelçilikler (faralar ýanýar) | 15 |
+| 🏜️ **Garagum Desert** | Sweeping sands, rolling dunes, and canal bridges | 10 |
+| 🏛️ **Ashgabat** | White marble avenues and monumental architecture | 15 |
+| 🪨 **Yangykala** | Steep rock formations and canyon passages | 15 |
+| 🔥 **Darvaza (Gas Crater)** | Night race with open flames and trap hazards (headlights engaged) | 15 |
 
 ---
 
-## 🚙 Ulaglar
+## 🚙 Vehicles
 
-| Ulag | Motor | Ýangyç tanky | Häsiýeti |
+| Vehicle | Engine | Fuel Tank | Characteristics |
 |---|:---:|:---:|---|
-| 🏎️ **Buggy** | ★★☆☆☆ | ★★☆☆☆ | Ýeňil we çalt başlangyç ulag |
-| 🚙 **UAZ** | ★★★☆☆ | ★★★★☆ | Deňagramly, uzak ýola ýangyçly |
-| 🛻 **Pikap** | ★★★★☆ | ★★★★☆ | Güýçli motor, agyr ýerlere gowy |
-| 🚗 **Ak ulag** | ★★★☆☆ | ★★★☆☆ | Şäher üçin çeýe ulag |
+| 🏎️ **Buggy** | ★★☆☆☆ | ★★☆☆☆ | Lightweight and agile starter vehicle |
+| 🚙 **UAZ** | ★★★☆☆ | ★★★★☆ | Well-balanced with a large fuel capacity for long distances |
+| 🛻 **Pickup** | ★★★★☆ | ★★★★☆ | High-torque engine, excellent on rough and steep terrain |
+| 🚗 **White Car** | ★★★☆☆ | ★★★☆☆ | Nimble cruiser optimized for urban tracks |
 
-> Her ulagyň `engine`, `suspension`, `tires`, `fuel` görkezijileri oýnuň fizikasyna
-> täsir edýär — `lib/models/vehicle_config.dart`.
-
----
-
-## 🎯 Oýun mehanikasy
-
-### Ýangyç ⛽
-- Motor başdan ýangyç ýakýar; gaz/tormoz basylanda has köp.
-- Ýangyç **25%**-e ýetende duýduryş berilýär we ýakynda bir bidon peýda bolýar.
-- Bak doly gutarsa **"Ýangyç gutardy"** ekrany açylýar (reklama görüp dowam edip bolýar).
-
-### Teňňe 🪙
-- Ýolda teňňe ýygnalýar; her turuň öz **gerekli teňňe** çägi bar.
-- Toplanan teňňe umumy balansa goşulýar (crash/finiş — parhy ýok, ýygnanan teňňe ýatda galýar).
-
-### Turlar 🏁
-- Finiş çyzygyna ýet **we** gerekli teňňäni topla → tur tamamlanýar we indiki açylýar.
-- Her karta öz turlaryny aýratyn saklaýar.
+> Vehicle properties (`engine`, `suspension`, `tires`, `fuel`) directly tune the physics behavior in `lib/models/vehicle_config.dart`.
 
 ---
 
-## 💰 Monetizasiýa
+## 🎯 Game Mechanics
 
-Oýunda **AdMob** (reklama) we **RevenueCat** (satyn alyş/abuna) bilelikde işleýär.
-Reklama syýasaty oýunçyny gaçyrmaz ýaly ätiýaçly gurnaldy.
+### Fuel ⛽
+- The engine consumes fuel continuously; consumption increases during acceleration and braking.
+- When fuel drops below **25%**, a warning appears and a fuel can spawns ahead.
+- Completely exhausting the fuel tank brings up the **"Out of Fuel"** screen (players can watch a rewarded ad to continue).
 
-### 📺 Reklama (AdMob)
+### Coins 🪙
+- Collect coins scattered along the route; each stage requires a **target coin count** to clear.
+- All collected coins are added to your balance (persisted even upon crash or failure).
 
-| Görnüş | Nirede | Düzgün |
+### Stages 🏁
+- Cross the finish line **and** collect the required coins to complete the stage and unlock the next one.
+- Each map tracks its stage progress independently.
+
+---
+
+## 💰 Monetization
+
+The game pairs **AdMob** (advertising) with **RevenueCat** (in-app purchases & subscriptions), carefully balanced to provide a player-friendly experience.
+
+### 📺 Advertisements (AdMob)
+
+| Type | Placement | Rules |
 |---|---|---|
-| 🎁 **Rewarded** — Dowam et | Ýangyç gutaranda | Reklama gör → bak dolýar (1 ýörişde 1 gezek) |
-| 🎁 **Rewarded** — 2× teňňe | Netije ekranynda | Reklama gör → teňňäň iki esse (1 gezek) |
-| 📺 **Interstitial** | Ýörişden soň menýu/turlara çykylanda | Ilkinji 5 ýöriş ýok, soň her 3-nji ýöriş |
-| 🏷️ **Banner** | Diňe menýu we garaž | Oýnuň içinde hiç haçan |
+| 🎁 **Rewarded** — Continue | Out of fuel prompt | Watch ad → refuels tank (once per run) |
+| 🎁 **Rewarded** — 2× Coins | Results screen | Watch ad → doubles earned coins (once per run) |
+| 📺 **Interstitial** | Navigating back to menu/levels after a run | None during first 5 runs, then every 3rd run |
+| 🏷️ **Banner** | Main menu and garage only | Never shown during active gameplay |
 
-### 🛒 Satyn alyşlar (RevenueCat)
+### 🛒 In-App Purchases (RevenueCat)
 
-| Entitlement | Näme berýär |
+| Entitlement | Benefits |
 |---|---|
-| `no_ads` | Banner + interstitial aýrylýar (**rewarded galýar**) |
-| `unlock_all_maps` | Ähli kartalary açýar |
-| `vip` | Reklamasyz + günlük teňňe + 2× teňňe + VIP reňkler |
+| `no_ads` | Removes banner + interstitial ads (**rewarded ads remain available**) |
+| `unlock_all_maps` | Instantly unlocks all maps |
+| `vip` | Ad-free + daily coin bonuses + permanent 2× coin multiplier + VIP car colors |
 
-> **Reklamasyz** oýunçylara-da rewarded düwmeleri galdyrylýar — olar öz islegi bilen basýar.
-> Paywall dizaýny **RevenueCat Paywalls v2** arkaly dashboard-dan üýtgedip bolýar (koda degmän).
+> Players with **no-ads** can still choose to watch rewarded ads for optional bonus rewards.
+> Paywalls can be customized remotely without updating the app using **RevenueCat Paywalls v2**.
 
 ---
 
-## 🛠️ Tehnologiýalar
+## 🛠️ Tech Stack
 
-| Gatlak | Ulanylýan |
+| Layer | Technology |
 |---|---|
 | **Framework** | Flutter (Dart) |
-| **Oýun hereketlendirijisi** | [Flame](https://flame-engine.org/) `1.35` |
-| **Fizika** | Forge2D (`flame_forge2d`) |
-| **Ses** | `flame_audio` (3 gatlakly motor modeli) |
-| **Ýatda saklama** | `shared_preferences` |
-| **Reklama** | `google_mobile_ads` |
-| **Satyn alyş** | `purchases_flutter` + `purchases_ui_flutter` |
+| **Game Engine** | [Flame](https://flame-engine.org/) `1.35` |
+| **Physics Engine** | Forge2D (`flame_forge2d`) |
+| **Audio** | `flame_audio` (3-layer engine sound model) |
+| **Persistence** | `shared_preferences` |
+| **Ads** | `google_mobile_ads` |
+| **In-App Purchases** | `purchases_flutter` + `purchases_ui_flutter` |
 
-**State management:** ýönekeý `setState` + `ValueNotifier` (goşmaça paket ýok).
-**Servisler:** `GameProgressService`, `PurchaseService`, `AdService` — singleton nagşynda,
-`main()`-de bir gezek `init()` edilýär.
+**State Management:** Clean `setState` + `ValueNotifier` architecture (no heavy external state packages).
+**Services:** `GameProgressService`, `PurchaseService`, `AdService` — implemented as singletons initialized once in `main()`.
 
 ---
 
-## 📁 Proýektiň gurluşy
+## 📁 Project Structure
 
 ```
 lib/
-├── main.dart                     # Başlangyç — servisleri init edýär
+├── main.dart                     # App entry point — initializes core services
 ├── game/
-│   ├── garagum_racing_game.dart  # Esasy Flame oýny (fizika, ýangyç, kamera)
-│   ├── audio/audio_manager.dart  # 3 gatlakly motor sesi + SFX
-│   ├── components/               # Ulag, teňňe, ýangyç bidony, päsgelçilik
-│   └── world/                    # Ýer, köpri, parallaks fon, dekor (her karta)
+│   ├── garagum_racing_game.dart  # Main Flame game loop (physics, fuel, camera)
+│   ├── audio/audio_manager.dart  # 3-layer engine audio + SFX management
+│   ├── components/               # Vehicle, coins, gas cans, obstacles
+│   └── world/                    # Ground, bridges, parallax backgrounds, decor (per map)
 ├── models/
-│   ├── map_theme.dart            # 4 karta enum
-│   ├── round_config.dart         # 55 turuň sazlamalary
-│   └── vehicle_config.dart       # 4 ulagyň görkezijileri
+│   ├── map_theme.dart            # 4 map themes enum & metadata
+│   ├── round_config.dart         # Stage configurations for all 55 stages
+│   └── vehicle_config.dart       # Tuning specs for the 4 vehicles
 ├── screens/
-│   ├── menu/                     # Baş menýu + sazlamalar
-│   ├── garage/                   # Garaž (ulag saýlamak)
-│   ├── levels/                   # Tur saýlamak (her karta)
-│   ├── race_screen.dart          # Ýaryş ekrany + overlaylar
-│   └── game_over/                # Oýun gutardy ekrany
+│   ├── menu/                     # Main menu & settings
+│   ├── garage/                   # Vehicle selection & garage
+│   ├── levels/                   # Stage selection (per map)
+│   ├── race_screen.dart          # Active race view & HUD overlays
+│   └── game_over/                # Game over screen
 ├── services/
-│   ├── game_progress_service.dart# Teňňe + tur üstünligi (SharedPreferences)
-│   ├── purchase_service.dart     # RevenueCat (entitlement, paywall)
-│   └── ad_service.dart           # AdMob (banner/interstitial/rewarded)
+│   ├── game_progress_service.dart# Coins & stage progression (SharedPreferences)
+│   ├── purchase_service.dart     # RevenueCat integration (entitlements, paywalls)
+│   └── ad_service.dart           # AdMob integration (banner, interstitial, rewarded)
 └── widgets/
-    └── ad_banner.dart            # Özüni dolandyrýan banner widjeti
+    └── ad_banner.dart            # Self-managing banner widget
 ```
 
 ---
 
-## 🚀 Işläp başlamak
+## 🚀 Getting Started
 
-### Talaplar
-- Flutter SDK `3.10+` (synag edilen: `3.38`)
-- Android Studio / Xcode (enjam ýa emulator üçin)
+### Prerequisites
+- Flutter SDK `3.10+` (tested on `3.38`)
+- Android Studio / Xcode (for device or emulator testing)
 
-### Gurnamak we işletmek
+### Installation & Running
 
 ```bash
-# Baglylyklary ýükle
+# Install dependencies
 flutter pub get
 
-# Enjamda ýa emulatorda işlet
+# Run on a connected device or emulator
 flutter run
 
-# Reliz APK ýygna (Android)
+# Build release APK (Android)
 flutter build apk --release
 ```
 
-> ⚠️ **Bellik:** Reklama we satyn alyşlar diňe **hakyky Android/iOS enjamda** işleýär
-> (web/desktopda däl). Häzir **test** ID-ler goýlan — "Test Ad" bolup görünýär.
+> ⚠️ **Note:** Ads and in-app purchases function exclusively on **physical Android/iOS devices** (not web/desktop). Test IDs are pre-configured to display "Test Ad" banners.
 
 ---
 
-## 🔑 Reliz üçin sazlama
+## 🔑 Release Configuration
 
-Dükana çykarmazdan öň şu ýerlerdäki **test ID-lerini** hakyky bilen çalşyň:
+Before publishing to production, replace the **test IDs** with live credentials:
 
-| Faýl | Çalyşmaly |
+| File | Configuration Target |
 |---|---|
-| `lib/services/purchase_service.dart` | `_androidApiKey` / `_iosApiKey` → RevenueCat public key-ler |
-| `lib/services/ad_service.dart` | Banner / interstitial / rewarded unit ID-leri |
+| `lib/services/purchase_service.dart` | `_androidApiKey` / `_iosApiKey` → RevenueCat public API keys |
+| `lib/services/ad_service.dart` | Banner / interstitial / rewarded ad unit IDs |
 | `android/app/src/main/AndroidManifest.xml` | AdMob **App ID** meta-data |
 | `ios/Runner/Info.plist` | `GADApplicationIdentifier` + `SKAdNetworkItems` |
 
-Soňra **RevenueCat dashboard**-da şu entitlement-leri we önümleri dörediň:
-`no_ads`, `unlock_all_maps`, `vip` + teňňe paketleri (`coins_10000`, `coins_50000`, `coins_200000`).
+Ensure the following entitlements and products are configured in the **RevenueCat Dashboard**:
+`no_ads`, `unlock_all_maps`, `vip` + coin packs (`coins_10000`, `coins_50000`, `coins_200000`).
 
 ---
 
 <div align="center">
 
-**Garagum Racing** 🏜️ — Türkmenistanyň çägeliklerinde ýarş!
+**Garagum Racing** 🏜️ — Race across the sands of Turkmenistan!
 
-<sub>Flutter · Flame · Forge2D bilen guruldy</sub>
+<sub>Built with Flutter · Flame · Forge2D</sub>
 
 </div>
